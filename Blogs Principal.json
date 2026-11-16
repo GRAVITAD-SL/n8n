@@ -1,0 +1,1591 @@
+{
+  "name": "Blogs Principal",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -6288,
+        1308
+      ],
+      "id": "7f265e40-fee3-4512-baf6-3d89a371c8b5",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -6288,
+        1500
+      ],
+      "id": "baef6deb-22d8-4219-a4a1-de01f65c4d50",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const combinedText = items\n  .map(i => i.json.document.pageContent || \"\")\n  .join(\"\\n\\n\");\n\nreturn [{ json: { text: combinedText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4368,
+        1040
+      ],
+      "id": "9e41cdeb-e98f-4d20-9ca0-7260f066cffd",
+      "name": "Juntar info del RAG1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un **Estratega de Contenidos SEO Senior**. Tu misión es diseñar la ARQUITECTURA editorial y SEO de un artículo profundo (Long-Form Content) que luego será redactado por otro sistema.\n\n### 1. DATOS DE ENTRADA\n- **Fecha actual:** {{ $now }}\n- **TEMA OBJETIVO:** {{ $('Search records').first().json.Temas }}\n\n### 2. FUENTE DE VERDAD (RAG)\n{{ $json.text }}\n\n### 3. INSTRUCCIONES DE LA TAREA\n\n**TAREA 1: Definir Intención**\n- Analiza el tema y define la intención dominante: guía, análisis, comparativa, lista, diagnóstico o respuesta operativa.\n- Señala una intención secundaria SOLO si aporta contexto y no genera canibalización.\n\n**TAREA 2: Ingeniería de Palabras Clave**\nTu objetivo es alinear lo que el usuario busca (Tema Airtable) con lo que sabemos técnicamente (Contexto RAG).\n\nGenera las keywords siguiendo esta lógica estricta:\n- **1 Palabra Clave Principal:** MÁXIMO 3 o 4 palabras. Debe ser el término raíz para el slug.\n- **4 Variaciones Long Tail:** preguntas o frases más largas y específicas que el RAG pueda responder.\n- **6 Palabras Semánticas (LSI):** terminología técnica real extraída del contexto RAG.\n- **Sinónimos Obligatorios:** 3 a 5 variantes léxicas naturales para evitar keyword stuffing en titulares y cuerpo.\n\n**TAREA 3: Reglas On-Page Obligatorias**\nDefine reglas concretas y accionables para el redactor:\n- Dónde debe aparecer la keyword principal: H1 editorial, slug, meta title y primer párrafo si encaja de forma natural.\n- Cómo evitar keyword stuffing: no repetir la keyword principal en encabezados múltiples ni en párrafos consecutivos; prioriza sinónimos y términos semánticos.\n- Qué promesa debe hacer el H1: orientado a búsqueda, utilidad o CTR. Debe usar clickbait moderado, creíble y no engañoso.\n- Propón un H1 recomendado y un meta title SEO recomendado. Pueden coincidir, pero no es obligatorio.\n- Cómo debe ser el primer párrafo: breve, directo y legible en móvil.\n- Qué tipo de CTA final conviene: contacto comercial, consulta, demo, auditoría o descarga.\n- Qué clase de enlaces internos conviene insertar y con qué anchor descriptivo.\n- Qué sinónimos deben aparecer en H2 y H3 para reforzar relevancia sin repetir la keyword principal.\n\n**TAREA 4: Estructura del Artículo**\nDiseña un esquema para un artículo denso y fluido.\n- **Regla de Oro:** NO crees un H2 para cada pequeño detalle. Agrupa conceptos.\n- **Límite:** usa MÁXIMO 3 o 4 H2 principales en el briefing.\n- **Uso de H3:** solo si es estrictamente necesario para desglosar un H2 largo.\n- Indica qué bloque exige mayor profundidad técnica y qué bloque debe cerrar con CTA.\n\n### 4. FORMATO DE SALIDA\nDevuelve SOLO un briefing estructurado con estas secciones exactas:\n1. Intención principal\n2. Intención secundaria\n3. Keyword principal\n4. Variaciones long tail\n5. Palabras semánticas\n6. Sinónimos obligatorios\n7. Promesa del H1\n8. H1 recomendado\n9. Meta title SEO recomendado\n10. Estructura recomendada\n11. Reglas on-page obligatorias\n12. Oportunidades de enlazado interno\n13. CTA final recomendado\n\nEl briefing debe ser accionable, concreto y reutilizable por el redactor. No escribas el artículo final.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -4144,
+        1040
+      ],
+      "id": "2116c896-dcb0-4361-b4de-22acdb82979c",
+      "name": "LLM: Investigación1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.5",
+          "mode": "list",
+          "cachedResultName": "gpt-5.5"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -4072,
+        1264
+      ],
+      "id": "13ceb34c-48d8-42a2-a0d7-7cb609d1172c",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "nJOMCbNfcV7iSWQZ",
+          "name": "OpenAI Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2224,
+        940
+      ],
+      "id": "4bfca9c1-26e9-4dd1-8800-1f0415ad3b06",
+      "name": "MergeFinal"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2000,
+        1012
+      ],
+      "id": "66997688-5446-42c5-8470-30141fa46a27",
+      "name": "MergeFinalTags"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appFYkdtCShzuqEJB/tblrih2FBLhQV1F01"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Seleccionar web objetivo').first().json.id }}",
+            "Última publicación": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "Última publicación",
+              "displayName": "Última publicación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1552,
+        1012
+      ],
+      "id": "e71f5c45-4ce4-4f96-9f17-bd170157ed21",
+      "name": "Update record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Seleccionar web objetivo').first().json.URL }}/wp-json/wp/v2/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Imagenes subflow1').first().json.headerAuthRaw }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $('Artículo final1').first().json.title, content: $('Imagenes subflow1').first().json.content, slug: $('Artículo final1').first().json.slug, excerpt: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || $('Imagenes subflow1').first().json.content.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 155), status: $('Seleccionar web objetivo').first().json['Modo publicación'] === 'Borrador' ? 'draft' : 'publish', featured_media: $('Imagenes subflow1').first().json.featuredMediaId, tags: $('Taxonomias subflow1').first().json.final_tag_ids, categories: $('Taxonomias subflow1').first().json.final_ids, meta: { _yoast_wpseo_metadesc: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || $('Imagenes subflow1').first().json.content.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 155), _yoast_wpseo_title: $('Artículo final1').first().json.seoMetaTitle || $('Artículo final1').first().json.title, _yoast_wpseo_focuskw: $('Artículo final1').first().json.focusKeyphrase || $('Artículo final1').first().json.slug, yoast_wpseo_metadesc: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || $('Imagenes subflow1').first().json.content.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 155), yoast_wpseo_title: $('Artículo final1').first().json.seoMetaTitle || $('Artículo final1').first().json.title, rank_math_description: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || $('Imagenes subflow1').first().json.content.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 155), rank_math_title: $('Artículo final1').first().json.seoMetaTitle || $('Artículo final1').first().json.title, rank_math_focus_keyword: $('Artículo final1').first().json.focusKeyphrase || $('Artículo final1').first().json.slug } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1328,
+        1012
+      ],
+      "id": "48d275d9-ce54-4c51-bdb9-b534fd1efbaf",
+      "name": "Subir post"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Seleccionar web objetivo').first().json.URL }}/wp-json/wp/v2/posts/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Imagenes subflow1').first().json.headerAuthRaw }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ focus_keyword: $('Artículo final1').first().json.focusKeyphrase || $('Artículo final1').first().json.slug, meta: { _yoast_wpseo_metadesc: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || '', yoast_wpseo_metadesc: $('Artículo final1').first().json.seoMetaDescription || $('Imagenes subflow1').first().json.excerpt || '' } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1104,
+        1012
+      ],
+      "id": "fd789ace-fc06-4ca9-a374-624abf489cdc",
+      "name": "Patch Yoast focuskw"
+    },
+    {
+      "parameters": {
+        "chatId": "6870985820",
+        "text": "=✅ Nuevo Post Publicado  \n\nWeb: {{ $('Seleccionar web objetivo').first().json.URL }}\n\nTítulo: {{ $json.title.raw }}\n\nLink: {{ $node[\"Subir post\"].json.link }}\n\nIdioma: {{ $('Seleccionar web objetivo').first().json.Idiomas }}\n\nCategorías: {{ $json.class_list[7] }} ; {{ $json.class_list[8] }} \n\nEstado actualizado en Airtable. Revisa si todo está en órden",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -6288,
+        1892
+      ],
+      "id": "7c1f1584-4482-4240-8b77-724258fa089b",
+      "name": "Send a text message Benjamin",
+      "webhookId": "7c8f5aef-936c-40a0-9fb2-4f453c4ac350",
+      "credentials": {
+        "telegramApi": {
+          "id": "Qyiw2PGWruQGG9pb",
+          "name": "Telegram Benjamin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5485118190",
+        "text": "=✅ Nuevo Post Publicado  \n\nWeb: {{ $('Seleccionar web objetivo').first().json.URL }}\n\nTítulo: {{ $json.title.raw }}\n\nLink: {{ $node[\"Subir post\"].json.link }}\n\nIdioma: {{ $('Seleccionar web objetivo').first().json.Idiomas }}\n\nCategorías: {{ $json.class_list[7] }} ; {{ $json.class_list[8] }} \n\nEstado actualizado en Airtable. Revisa si todo está en órden",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -6288,
+        2116
+      ],
+      "id": "24ecd056-c3ae-4c29-ae49-6cec4c1ac5ec",
+      "name": "Send a text message Eduardo",
+      "webhookId": "7c8f5aef-936c-40a0-9fb2-4f453c4ac350",
+      "credentials": {
+        "telegramApi": {
+          "id": "HDD83O8U6A2217RO",
+          "name": "Telegram Eduardo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "n8nblogs",
+          "mode": "list",
+          "cachedResultName": "n8nblogs"
+        },
+        "prompt": "={{ $json.Temas }}",
+        "topK": 8,
+        "includeDocumentMetadata": "",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "topic",
+                "value": "={{\n  (() => {\n    const rawTopics = $('Search records').first().json[\"Topico RAG\"] || \"\";\n    if (!rawTopics.trim()) return undefined;\n    const topicsArray = rawTopics.toString().split(',').map(t => t.trim()).filter(t => t.length > 0);\n    return { \"$in\": topicsArray }\n  })()\n}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -4720,
+        1040
+      ],
+      "id": "6d84375d-231a-4baf-9ab9-626c69d7f9da",
+      "name": "RAG pinecode",
+      "credentials": {
+        "pineconeApi": {
+          "id": "dtbIG8zVnH4BlyTz",
+          "name": "Pinecone Synergiart"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -4648,
+        1264
+      ],
+      "id": "c2e80f33-d29b-4e31-a890-7671459f899c",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "nJOMCbNfcV7iSWQZ",
+          "name": "OpenAI Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "filterByFormula": "={activo} = 'Si'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -5616,
+        1404
+      ],
+      "id": "244e83cc-c847-427b-a0ed-d713ae14bf4e",
+      "name": "Webs candidatas",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appBS6yolGXybS1P2/tblnNFcUahZrNXI7R"
+        },
+        "filterByFormula": "={{ $json._isUrgent ? \"AND({URL del sitio} = '\" + $json.URL + \"', {Estado} != 'Creado', {Temas} != '', IS_SAME({Fecha creación}, TODAY(), 'day'))\" : \"AND({URL del sitio} = '\" + $json.URL + \"', {Estado} != 'Creado', {Temas} != '', NOT({Fecha creación}))\"}}",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -5168,
+        1404
+      ],
+      "id": "274914ca-1585-4c38-a435-8f1bdb1e9f05",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeUrl(url) {\n  return (url ?? '')\n    .toString()\n    .trim()\n    .replace(/\\/+$/, '')\n    .toLowerCase();\n}\n\nlet resumir;\ntry {\n  resumir = $('Resumir URLs pendientes').first().json;\n} catch (e) {\n  return [];\n}\nif (!resumir || !Array.isArray(resumir.pendingUrls) || resumir.pendingUrls.length === 0) {\n  return [];\n}\n\nconst pendingUrls = new Set(\n  resumir.pendingUrls.map(u => normalizeUrl(u))\n);\n\nconst urgentUrls = new Set(\n  (resumir.urgentUrls || []).map(u => normalizeUrl(u))\n);\n\nconst today = $now\n  .setZone('America/Caracas')\n  .toFormat('yyyy-MM-dd');\n\nconst eligible = items.filter(item => {\n  const url = normalizeUrl(item.json.URL);\n\n  if (!url || !pendingUrls.has(url)) return false;\n\n  if (urgentUrls.has(url)) return true;\n\n  const pf = (item.json['Próxima fecha'] ?? '').toString();\n  const pfDate = pf.slice(0, 10);\n\n  return pfDate <= today;\n});\n\nif (eligible.length === 0) {\n  return [];\n}\n\neligible.sort((a, b) => {\n  const aUrl = normalizeUrl(a.json.URL);\n  const bUrl = normalizeUrl(b.json.URL);\n\n  const aUrgent = urgentUrls.has(aUrl) ? 0 : 1;\n  const bUrgent = urgentUrls.has(bUrl) ? 0 : 1;\n\n  if (aUrgent !== bUrgent) {\n    return aUrgent - bUrgent;\n  }\n\n  const aDate = a.json['Última publicación'];\n  const bDate = b.json['Última publicación'];\n\n  if (!aDate && !bDate) return 0;\n  if (!aDate) return -1;\n  if (!bDate) return 1;\n\n  return new Date(aDate) - new Date(bDate);\n});\n\nconst selected = eligible[0];\n\nreturn [\n  {\n    json: {\n      ...selected.json,\n      _isUrgent: urgentUrls.has(\n        normalizeUrl(selected.json.URL)\n      ),\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5392,
+        1404
+      ],
+      "id": "ed5c26b9-0a54-4541-8389-723a460c7ec5",
+      "name": "Seleccionar web objetivo"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblnNFcUahZrNXI7R"
+        },
+        "filterByFormula": "=AND({Estado} != 'Creado', {Temas} != '')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -6064,
+        1404
+      ],
+      "id": "0b03cd70-dd7e-4096-b321-78aa68401262",
+      "name": "Buscar posts pendientes",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appFYkdtCShzuqEJB/tblnNFcUahZrNXI7R"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Search records').first().json.id }}",
+            "Estado": "Creado"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Creado",
+                  "value": "Creado"
+                },
+                {
+                  "name": "No creado",
+                  "value": "No creado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1776,
+        1012
+      ],
+      "id": "ed1d4ba9-0c7e-4450-a0d1-6319bbdac0a5",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = $now.setZone('America/Caracas').toFormat('yyyy-MM-dd');\nconst norm = (v) => (v ?? '').toString().trim().replace(/\\/+$/, '').toLowerCase();\n// Solo posts accionables: con URL de sitio y Temas informado.\n// Un registro con fechas pero sin Temas se ignora aqui para no bloquear el loop.\nconst valid = items.filter(i => {\n  const url = norm(i.json['URL del sitio']);\n  const temas = (i.json['Temas'] ?? '').toString().trim();\n  return url.length > 0 && temas.length > 0;\n});\nconst urls = new Set(valid.map(i => norm(i.json['URL del sitio'])));\nconst urgentUrls = new Set(\n  valid\n    .filter(i => {\n      const s = (i.json['Fecha creación'] ?? '').toString();\n      return s.length >= 10 && s.slice(0, 10) === today;\n    })\n    .map(i => norm(i.json['URL del sitio']))\n);\nreturn [{ json: { pendingUrls: [...urls], urgentUrls: [...urgentUrls] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5840,
+        1404
+      ],
+      "id": "6479762f-e3d2-4c8a-af95-d91aab7289ca",
+      "name": "Resumir URLs pendientes"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "filterByFormula": "=AND(DATETIME_FORMAT({Próxima fecha}, 'YYYY-MM-DD') <= '{{ $now.setZone(\"America/Caracas\").toFormat(\"yyyy-MM-dd\") }}', {activo} = 'Si')",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        1136
+      ],
+      "id": "498987d1-a96a-44e6-9041-c8ba4909f167",
+      "name": "Verificar más pendientes",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $workflow.id }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$workflow.id%20%7D%7D"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        1136
+      ],
+      "id": "37b3c9a5-646d-4547-a08b-c52efd3e9269",
+      "name": "Re-ejecutar flujo"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Seleccionar web objetivo').first().json.URL.replace(/\\/+$/, '') }}/wp-json/wp/v2/posts?per_page=20&status=publish&_fields=title,link",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4368,
+        1476
+      ],
+      "id": "da18460e-6ba6-4aa1-ba2d-0b98e6572e7b",
+      "name": "Buscar posts WP",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawData = items[0]?.json;\n\nlet posts = [];\nif (Array.isArray(rawData)) {\n  posts = rawData;\n} else if (items.length > 1) {\n  posts = items.map(i => i.json).filter(Boolean);\n}\n\nif (posts.length === 0) {\n  return [{ json: { postsIndex: 'No hay posts publicados aún en este sitio.' } }];\n}\n\nconst lines = posts\n  .filter(p => p && p.title && p.link)\n  .map(p => {\n    const title = typeof p.title === 'object'\n      ? (p.title.rendered || '').replace(/<[^>]+>/g, '').trim()\n      : String(p.title).trim();\n    return `- ${title} → ${p.link}`;\n  })\n  .join('\\n');\n\nreturn [{ json: { postsIndex: lines || 'No hay posts publicados aún en este sitio.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4080,
+        1476
+      ],
+      "id": "3d025264-034e-414c-ad42-4ce8f10fe641",
+      "name": "Formatear índice posts"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -3792,
+        1040
+      ],
+      "id": "711ebfa7-b365-4a5c-b491-43456e0d4fb7",
+      "name": "Merge contexto redacción"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  JSON.stringify({\n    api_key: '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',\n    query: $('Search records').first().json.Temas,\n    max_results: 3,\n    search_depth: 'basic',\n    include_answer: false,\n    include_raw_content: false\n  })\n}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -4080,
+        1668
+      ],
+      "id": "7a841919-2074-4219-94a1-b1354e073109",
+      "name": "Buscar fuentes Tavily",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = (items[0].json.results || []);\nif (results.length === 0) {\n  return [{ json: { sourcesIndex: '' } }];\n}\nconst lines = results\n  .filter(r => r.url && r.title)\n  .map(r => `- ${r.title} → ${r.url}`)\n  .join('\\n');\nreturn [{ json: { sourcesIndex: lines } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3792,
+        1668
+      ],
+      "id": "a69dc4c5-080f-4029-bd09-d7492cf91f9f",
+      "name": "Formatear fuentes Tavily"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -3568,
+        1040
+      ],
+      "id": "262954b5-515d-447e-a590-a0386c33fcc7",
+      "name": "Merge con fuentes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22f20c35-7c0c-41f9-9a0a-1572b15f9dd7",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "1d8194b3-8f57-41b8-a9d7-b27db1186ca9",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "b3447b27-47cf-4db5-a488-0f3af6ab660e",
+              "name": "slug",
+              "value": "={{ $json.slug }}",
+              "type": "string"
+            },
+            {
+              "id": "b687908d-0719-4e1e-8c61-2099358556aa",
+              "name": "excerpt",
+              "value": "={{ $json.excerpt }}",
+              "type": "string"
+            },
+            {
+              "id": "1e33c64d-5748-4ee2-a6d4-b413d16a1492",
+              "name": "focusKeyphrase",
+              "value": "={{ $json.focusKeyphrase }}",
+              "type": "string"
+            },
+            {
+              "id": "b1be22ec-fcf3-499a-854d-5323c4fb7228",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "8d4df920-2fb2-4efd-aeb8-dd6a7750a2bb",
+              "name": "categoryNames",
+              "value": "={{ $json.categoryNames }}",
+              "type": "array"
+            },
+            {
+              "id": "55b29134-7f6f-4b48-9167-313610ffda18",
+              "name": "tags",
+              "value": "={{ $json.tags }}",
+              "type": "array"
+            },
+            {
+              "id": "9e944b09-92a3-45c2-9e1f-9d64654c2814",
+              "name": "targetLanguage",
+              "value": "={{ $json.targetLanguage }}",
+              "type": "string"
+            },
+            {
+              "id": "0f2f3ea8-aec7-4973-b845-5d44d01ddf95",
+              "name": "languageValid",
+              "value": "={{ $json.languageValid }}",
+              "type": "boolean"
+            },
+            {
+              "id": "1f24338a-6685-4bf2-9893-52f4b963d1ab",
+              "name": "languageSource",
+              "value": "={{ $json.languageSource }}",
+              "type": "string"
+            },
+            {
+              "id": "80dfe799-6db5-4864-96ca-86ff4fcc1f8d",
+              "name": "topic",
+              "value": "={{ $('Search records').first().json.Temas }}",
+              "type": "string"
+            },
+            {
+              "id": "a77df90d-5bc6-4db2-a954-7dbde5d6db3c",
+              "name": "siteUrl",
+              "value": "={{ $('Seleccionar web objetivo').first().json.URL.toString().replace(/[\\x60\\s]/g, '').replace(/\\/+$/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "6f0479f0-fab0-44e2-9ed1-79327244a95b",
+              "name": "wpUser",
+              "value": "={{ $('Seleccionar web objetivo').first().json['Usuario WP'] }}",
+              "type": "string"
+            },
+            {
+              "id": "2b6d8d37-042d-46ff-b2e2-b6014cece87a",
+              "name": "wpPassword",
+              "value": "={{ $('Seleccionar web objetivo').first().json['WP password'] }}",
+              "type": "string"
+            },
+            {
+              "id": "d87ad129-0e58-48ba-bdb2-d3a2324823e3",
+              "name": "seoMetaTitle",
+              "value": "={{ $json.seoMetaTitle || $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "02f4826d-6102-42a0-b1dc-864f3b4efc5f",
+              "name": "seoMetaDescription",
+              "value": "={{ $json.seoMetaDescription || $json.excerpt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2672,
+        1040
+      ],
+      "id": "f419700c-8a93-4272-a8cd-58076321a69b",
+      "name": "Artículo final1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jzLEtANNt72m11Wt",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/jzLEtANNt72m11Wt",
+          "cachedResultName": "Subflow - Imagenes Blog"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -2448,
+        896
+      ],
+      "id": "d39b411e-c4a3-4227-94be-b70c658c691c",
+      "name": "Imagenes subflow1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "KI6T6CBTmSac0Lwl",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KI6T6CBTmSac0Lwl",
+          "cachedResultName": "Subflow - Taxonomias Blog"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -2224,
+        1184
+      ],
+      "id": "d24fc322-2fe5-4604-82df-da249254ba40",
+      "name": "Taxonomias subflow1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5941cbc6-38da-448d-ae6d-b787df01d7bc",
+              "name": "topic",
+              "value": "={{ $('Search records').first().json.Temas }}",
+              "type": "string"
+            },
+            {
+              "id": "55dfa8e5-8582-4d3c-a142-1353407bc572",
+              "name": "brandContext",
+              "value": "={{ $('Seleccionar web objetivo').first().json['Contexto de la web'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f30a5295-3194-47bc-9288-9117035a09a5",
+              "name": "categoriesInput",
+              "value": "={{ $('Seleccionar web objetivo').first().json['Categorías'] }}",
+              "type": "string"
+            },
+            {
+              "id": "a1308f37-bbc6-4ccf-8215-eddfaebd615d",
+              "name": "language",
+              "value": "={{ $('Seleccionar web objetivo').first().json.Idiomas }}",
+              "type": "string"
+            },
+            {
+              "id": "4ba82ffe-2355-43fa-9bed-0ffe655cc635",
+              "name": "siteUrl",
+              "value": "={{ $('Seleccionar web objetivo').first().json.URL.toString().replace(/[\\x60\\s]/g, '').replace(/\\/+$/, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "082941d6-38d0-4627-a554-70d0bdd71807",
+              "name": "briefing",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "7a7ca77e-29c5-4dea-9bf6-3a9692df37e6",
+              "name": "postsIndex",
+              "value": "={{ $json.postsIndex }}",
+              "type": "string"
+            },
+            {
+              "id": "53880552-1442-4a6e-ae78-063bd88fead3",
+              "name": "sourcesIndex",
+              "value": "={{ $json.sourcesIndex }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000001",
+              "name": "templateForzado",
+              "value": "={{ $('Search records').first().json['Estructura Automatizada'] || 'Auto' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000011",
+              "name": "modoCustom",
+              "value": "={{ $('Search records').first().json['Estructura Custom'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000002",
+              "name": "tematicaEspecifica",
+              "value": "={{ $('Search records').first().json['Temática específica'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000003",
+              "name": "tipoEscritura",
+              "value": "={{ $('Search records').first().json['Tipo de escritura'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000012",
+              "name": "escrituraCustom",
+              "value": "={{ $('Search records').first().json['Estructura Custom'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000004",
+              "name": "estiloRedaccion",
+              "value": "={{ $('Search records').first().json['Estilo de redacción'] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1000001-0001-0001-0001-000000000005",
+              "name": "intencionArticulo",
+              "value": "={{ $('Search records').first().json['Intención del artículo'] || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3344,
+        1040
+      ],
+      "id": "dfb8fa7f-8186-429c-a7b2-cc563209f5f5",
+      "name": "Preparar datos redactor1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "NSaLux5GG7XlT2F8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/NSaLux5GG7XlT2F8",
+          "cachedResultName": "Subflow - Redactor Blog"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -3120,
+        1040
+      ],
+      "id": "639fdf5f-cd7e-4472-aee9-cd915beb2b0b",
+      "name": "Redactor subflow1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "4krlhynx9lBfoqPk",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4krlhynx9lBfoqPk",
+          "cachedResultName": "Subflow - Editor Blog"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -2896,
+        1040
+      ],
+      "id": "d61d86fe-a5f0-4815-99bb-133e880c1730",
+      "name": "Corrección Editor subflow1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "88425fdf-4d4d-4489-9b2b-f4631874e4a4",
+              "name": "airtableRecordId",
+              "value": "={{ $('Search records').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "26e2b144-f3dc-4ad6-8e87-4b68dcd3ced0",
+              "name": "wpPostId",
+              "value": "={{ $json.id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -880,
+        1012
+      ],
+      "id": "1f04c8be-a192-4643-82f7-4c85c85b5b7d",
+      "name": "Set WP Post ID"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblnNFcUahZrNXI7R"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appFYkdtCShzuqEJB/tblnNFcUahZrNXI7R"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.airtableRecordId }}",
+            "WP Post ID": "={{ $json.wpPostId }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "WP Post ID",
+              "displayName": "WP Post ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -656,
+        1012
+      ],
+      "id": "ee5217a3-b4ae-479a-b783-d13f1ed79487",
+      "name": "Update WP Post ID",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "temas-no-vacio",
+              "leftValue": "={{ $json.Temas }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4944,
+        1404
+      ],
+      "id": "6800c24a-d3fb-4b71-aae6-38b2d4cdd50c",
+      "name": "IF Temas no vacio"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Buscar posts pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar posts pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar info del RAG1": {
+      "main": [
+        [
+          {
+            "node": "LLM: Investigación1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Investigación1": {
+      "main": [
+        [
+          {
+            "node": "Merge contexto redacción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM: Investigación1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MergeFinal": {
+      "main": [
+        [
+          {
+            "node": "MergeFinalTags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MergeFinalTags": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record1": {
+      "main": [
+        [
+          {
+            "node": "Subir post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir post": {
+      "main": [
+        [
+          {
+            "node": "Patch Yoast focuskw",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patch Yoast focuskw": {
+      "main": [
+        [
+          {
+            "node": "Set WP Post ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG pinecode": {
+      "main": [
+        [
+          {
+            "node": "Juntar info del RAG1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "RAG pinecode",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webs candidatas": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar web objetivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "IF Temas no vacio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar web objetivo": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar posts pendientes": {
+      "main": [
+        [
+          {
+            "node": "Resumir URLs pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Update record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumir URLs pendientes": {
+      "main": [
+        [
+          {
+            "node": "Webs candidatas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar más pendientes": {
+      "main": [
+        [
+          {
+            "node": "Re-ejecutar flujo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar posts WP": {
+      "main": [
+        [
+          {
+            "node": "Formatear índice posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear índice posts": {
+      "main": [
+        [
+          {
+            "node": "Merge contexto redacción",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge contexto redacción": {
+      "main": [
+        [
+          {
+            "node": "Merge con fuentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar fuentes Tavily": {
+      "main": [
+        [
+          {
+            "node": "Formatear fuentes Tavily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear fuentes Tavily": {
+      "main": [
+        [
+          {
+            "node": "Merge con fuentes",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge con fuentes": {
+      "main": [
+        [
+          {
+            "node": "Preparar datos redactor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Artículo final1": {
+      "main": [
+        [
+          {
+            "node": "Imagenes subflow1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Taxonomias subflow1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "MergeFinal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagenes subflow1": {
+      "main": [
+        [
+          {
+            "node": "MergeFinal",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Taxonomias subflow1": {
+      "main": [
+        [
+          {
+            "node": "MergeFinalTags",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Preparar datos redactor1": {
+      "main": [
+        [
+          {
+            "node": "Redactor subflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactor subflow1": {
+      "main": [
+        [
+          {
+            "node": "Corrección Editor subflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Corrección Editor subflow1": {
+      "main": [
+        [
+          {
+            "node": "Artículo final1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set WP Post ID": {
+      "main": [
+        [
+          {
+            "node": "Update WP Post ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update WP Post ID": {
+      "main": [
+        [
+          {
+            "node": "Verificar más pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Temas no vacio": {
+      "main": [
+        [
+          {
+            "node": "RAG pinecode",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar posts WP",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar fuentes Tavily",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verificar más pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1274e4c9-a2af-49fa-a6f6-82e85969a668",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e299b3034bd5fbae40db28186bf64a1cfc19d582857ab5fcb0b1f45d907fa60d"
+  },
+  "id": "ptPRcauRaKBNRbV9",
+  "tags": []
+}

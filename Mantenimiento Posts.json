@@ -1,0 +1,452 @@
+{
+  "name": "Mantenimiento Posts (copia a Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "7beeb417-423c-4923-a3b8-db80cc86b0ab",
+      "name": "Schedule Trigger (mensual)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-umbral",
+              "name": "umbral",
+              "value": 900,
+              "type": "number"
+            },
+            {
+              "id": "cfg-objetivo",
+              "name": "objetivo",
+              "value": 750,
+              "type": "number"
+            },
+            {
+              "id": "cfg-dias-error",
+              "name": "diasError",
+              "value": 90,
+              "type": "number"
+            },
+            {
+              "id": "cfg-aviso",
+              "name": "avisoPorEncimaDe",
+              "value": 950,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c804360-d990-4082-9440-3a198eb673be",
+      "name": "Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "335c5061-a3e2-4af8-b468-d2a735406c17",
+      "name": "Posts - todos (solo lectura)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee todos los registros de Posts y decide qué copiar a Supabase.\n// NUNCA modifica Airtable: solo genera la consulta de inserción.\n\nconst cfg = $('Configuración').first().json;\nconst threshold = Number(cfg.umbral) || 900;\nconst target = Number(cfg.objetivo) || 750;\nconst errorDays = Number(cfg.diasError) || 90;\nconst alertAfter = Number(cfg.avisoPorEncimaDe) || 950;\n\nconst toText = (v) => {\n  if (v === null || v === undefined) return '';\n  if (Array.isArray(v)) return v.map(toText).join(', ');\n  if (typeof v === 'object') return JSON.stringify(v);\n  return String(v);\n};\n\nconst rows = $input.all().map((item) => {\n  const f = item.json.fields || item.json;\n  return {\n    id: item.json.id,\n    tema: toText(f['Temas']),\n    estado: toText(f['Estado']).trim(),\n    fecha_creacion: toText(f['Fecha creación']) || null,\n    fecha_publicacion: toText(f['Fecha publicación']) || null,\n    fecha_especifica: toText(f['Fecha específica']) || null,\n    template_forzado: toText(f['Template forzado']) || null,\n    tematica_especifica: toText(f['Temática específica']) || null,\n    tipo_escritura: toText(f['Tipo de escritura']) || null,\n    estilo_redaccion: toText(f['Estilo de redacción']) || null,\n    intencion_articulo: toText(f['Intención del artículo']) || null,\n    idioma: toText(f['Idiomas']) || null,\n    url_sitio: toText(f['URL del sitio']) || null,\n    url_articulo: null,\n    payload: f,\n  };\n});\n\nconst now = new Date();\nconst DAY = 24 * 60 * 60 * 1000;\n\nconst dateOf = (r) => {\n  const raw = r.fecha_publicacion || r.fecha_creacion;\n  if (!raw) return null;\n  const d = new Date(raw);\n  return Number.isNaN(d.getTime()) ? null : d;\n};\n\nconst archivable = rows.filter(\n  (r) => r.estado === 'Creado' || r.estado === 'Publicado'\n);\n\nconst oldErrors = rows.filter((r) => {\n  if (r.estado !== 'Error') return false;\n  const d = dateOf(r);\n  return d !== null && now - d > errorDays * DAY;\n});\n\nconst candidates = archivable.concat(oldErrors).sort((a, b) => {\n  const da = dateOf(a);\n  const db = dateOf(b);\n  if (!da && !db) return 0;\n  if (!da) return 1;\n  if (!db) return -1;\n  return da - db;\n});\n\n// Pendientes (No creado / vacío) NUNCA entran en candidates.\nconst selected = [];\nfor (const row of candidates) {\n  if (rows.length - selected.length <= target) break;\n  selected.push(row);\n}\n\nconst shouldArchive = rows.length > threshold && selected.length > 0;\nconst alertOnly = !shouldArchive && rows.length > alertAfter;\nconst shouldRun = shouldArchive || alertOnly;\n\nconst esc = (v) => {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  return \"'\" + String(v).replace(/'/g, \"''\") + \"'\";\n};\n\nconst jsonEsc = (v) => {\n  const raw = JSON.stringify(v === undefined ? null : v);\n  return \"'\" + String(raw).replace(/'/g, \"''\") + \"'::jsonb\";\n};\n\nconst columns = [\n  'airtable_id', 'tema', 'url_sitio', 'estado', 'fecha_creacion',\n  'fecha_publicacion', 'fecha_especifica', 'template_forzado',\n  'tematica_especifica', 'tipo_escritura', 'estilo_redaccion',\n  'intencion_articulo', 'url_articulo', 'idioma', 'payload',\n];\n\nconst values = selected\n  .map((r) => '(' + [\n    esc(r.id), esc(r.tema), esc(r.url_sitio), esc(r.estado),\n    esc(r.fecha_creacion), esc(r.fecha_publicacion), esc(r.fecha_especifica),\n    esc(r.template_forzado), esc(r.tematica_especifica), esc(r.tipo_escritura),\n    esc(r.estilo_redaccion), esc(r.intencion_articulo), esc(r.url_articulo),\n    esc(r.idioma), jsonEsc(r.payload),\n  ].join(',') + ')')\n  .join(',\\n');\n\nconst sql = shouldArchive\n  ? 'INSERT INTO public.posts_archivo (' + columns.join(', ') + ') VALUES\\n' +\n    values +\n    '\\nON CONFLICT (airtable_id) DO NOTHING\\nRETURNING airtable_id;'\n  : 'SELECT 1;';\n\nconst lastDate = selected.length ? dateOf(selected[selected.length - 1]) : null;\nconst cutoff = lastDate ? lastDate.toISOString().slice(0, 10) : '(sin fecha)';\nconst totalAfter = rows.length - selected.length;\n\nconst byState = {};\nfor (const r of selected) byState[r.estado] = (byState[r.estado] || 0) + 1;\nconst breakdown = Object.entries(byState)\n  .map(([k, v]) => k + ': ' + v)\n  .join(', ');\n\nlet message = '';\nif (shouldArchive) {\n  message = [\n    '📦 Archivo de Posts → Supabase',\n    '',\n    'Registros antes: ' + rows.length,\n    'Copiados a Supabase: ' + selected.length + ' (' + breakdown + ')',\n    'Quedarían en Airtable tras borrar: ' + totalAfter,\n    '',\n    'Copia verificada en Supabase antes de borrar.',\n    'Corte aplicado: ' + cutoff + ' (Estado Publicado/Creado/Error).',\n    'Pendientes (\"No creado\" o vacío) intactos.',\n    '',\n    totalAfter > alertAfter\n      ? '⚠️ Tras el borrado quedarían ' + totalAfter + ' (> ' + alertAfter +\n        '). La mayoría serán pendientes: valora subir de plan.'\n      : 'Margen hasta 1.000 registros: ' + (1000 - totalAfter) + '.',\n  ].join('\\n');\n} else if (alertOnly) {\n  message = [\n    '⚠️ Posts está cerca del límite',\n    '',\n    'Registros actuales: ' + rows.length,\n    'No hay filas archivables (Creado/Publicado/Error antiguas).',\n    'El volumen son pendientes. Decide: subir de plan o revisar pendientes antiguos.',\n  ].join('\\n');\n}\n\nreturn [{\n  json: {\n    shouldArchive,\n    alertOnly,\n    shouldRun,\n    sql,\n    message,\n    totalBefore: rows.length,\n    totalAfter,\n    archived: selected.length,\n    ids: selected.map((r) => r.id),\n    cutoff,\n  },\n}];"
+      },
+      "id": "cc828e0d-ce18-4592-ad12-060190aa1db4",
+      "name": "Seleccionar lote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-should-run",
+              "leftValue": "={{ $json.shouldRun }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6e895b91-d369-43ee-b28a-b06ab4f0c2ad",
+      "name": "¿Hay algo que hacer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "3d7045c1-b774-4fa6-b65c-8c621b3320ca",
+      "name": "Insertar en Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        -80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "REEMPLAZAR_POR_ID",
+          "name": "Supabase Archive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6870985820",
+        "text": "={{ $('Seleccionar lote').first().json.message }}\n\n🗑️ Borrados en Airtable: {{ $('Preparar borrado').first().json.totalIds }}",
+        "additionalFields": {}
+      },
+      "id": "53b9410e-5109-42b8-a3ac-e820e5a78438",
+      "name": "Aviso Benjamin",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2200,
+        -80
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "Qyiw2PGWruQGG9pb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "34ad593b-d44b-41a7-9fe8-ea2b05775266",
+      "name": "Nada que hacer",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT airtable_id FROM public.posts_archivo WHERE airtable_id IN ({{ $('Seleccionar lote').first().json.ids.map(id => \"'\" + id + \"'\").join(', ') }});",
+        "options": {}
+      },
+      "id": "c2799e64-e035-40d8-8f65-493eab712c65",
+      "name": "Verificar en Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1100,
+        -80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "REEMPLAZAR_POR_ID",
+          "name": "Supabase Archive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara el borrado SOLO de los ids que ya están confirmados en Supabase.\nconst cfg = $('Seleccionar lote').first().json;\nconst expected = cfg.ids || [];\nconst verified = new Set(\n  $input.all().map((i) => i.json.airtable_id).filter(Boolean)\n);\n\nconst deletable = expected.filter((id) => verified.has(id));\nconst skipped = expected.filter((id) => !verified.has(id));\n\nconst BASE = 'appOaontVX9RVfWzd';\nconst TABLE = 'tblnNFcUahZrNXI7R';\nconst endpoint = `https://api.airtable.com/v0/${BASE}/${TABLE}`;\n\nconst items = [];\nfor (let i = 0; i < deletable.length; i += 10) {\n  const ids = deletable.slice(i, i + 10);\n  const qs = ids.map((id) => 'records[]=' + encodeURIComponent(id)).join('&');\n  items.push({\n    json: {\n      ids,\n      url: `${endpoint}?${qs}`,\n      skip: false,\n      totalIds: deletable.length,\n      skipped,\n      totalAfter: cfg.totalAfter,\n    },\n  });\n}\n\nif (!items.length) {\n  items.push({\n    json: {\n      ids: [],\n      url: '',\n      skip: true,\n      totalIds: 0,\n      skipped,\n      totalAfter: cfg.totalAfter,\n    },\n  });\n}\nreturn items;"
+      },
+      "id": "82293a57-6abd-4c08-bde7-2f1b1818ff02",
+      "name": "Preparar borrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b36d78eb-aa67-43a2-934a-bc29297eacfd",
+      "name": "¿Borrar algo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {}
+      },
+      "id": "5295f685-adb9-4de9-aeda-d6824efc68e2",
+      "name": "Borrar en Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -80
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cuenta lo que Airtable confirmó como borrado en esta ejecución.\nconst prep = $('Preparar borrado').first().json;\nconst deleted = $input.all().reduce(\n  (n, i) => n + ((i.json.records || []).length),\n  0\n);\nreturn [{\n  json: {\n    deleted,\n    totalIds: prep.totalIds,\n    totalAfter: prep.totalAfter,\n    skipped: prep.skipped || [],\n  },\n}];"
+      },
+      "id": "596d18e8-ba51-4b5e-ab52-ef08785156bf",
+      "name": "Contar borrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (mensual)": {
+      "main": [
+        [
+          {
+            "node": "Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuración": {
+      "main": [
+        [
+          {
+            "node": "Posts - todos (solo lectura)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts - todos (solo lectura)": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar lote": {
+      "main": [
+        [
+          {
+            "node": "¿Hay algo que hacer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay algo que hacer?": {
+      "main": [
+        [
+          {
+            "node": "Insertar en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nada que hacer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Verificar en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Preparar borrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar borrado": {
+      "main": [
+        [
+          {
+            "node": "¿Borrar algo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Borrar algo?": {
+      "main": [
+        [
+          {
+            "node": "Borrar en Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aviso Benjamin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar en Airtable": {
+      "main": [
+        [
+          {
+            "node": "Contar borrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contar borrado": {
+      "main": [
+        [
+          {
+            "node": "Aviso Benjamin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Caracas"
+  },
+  "versionId": "ed81a6ee-9282-4b61-95a3-4a2ed4a51c43",
+  "meta": {
+    "instanceId": "local"
+  },
+  "tags": []
+}

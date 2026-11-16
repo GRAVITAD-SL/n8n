@@ -1,0 +1,1027 @@
+{
+  "name": "Blogs Analista con Supabase (v2)",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.URL || $json.fields?.URL }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        17888,
+        5792
+      ],
+      "id": "fcfee189-40ff-433e-baa9-6189f07f3fcd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.data }}",
+        "destinationKey": "content",
+        "options": {
+          "ignore": "head, script, style, nav, footer, header, form, iframe, svg, button, aside, img, figure"
+        }
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        18112,
+        5792
+      ],
+      "id": "e2c551db-369b-4953-8b91-70be9ad65839",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el siguiente contenido extraído de una página web en formato Markdown.\n\nIgnora completamente:\n\nMenús de navegación\n\nBarras laterales\n\nPies de página\n\nTextos legales\n\nAvisos de cookies\n\nPublicidad\n\nContenido repetido o estructural del sitio\n\nCéntrate exclusivamente en el contenido principal del artículo o cuerpo editorial.\n\nCONTENIDO WEB:\n{{ $json.content }}\n\n(O la variable que hayas definido como Destination Key)\n\nTU TAREA:\n\nDevuélveme ÚNICAMENTE un objeto JSON válido y estricto (sin texto antes ni después del JSON) con la siguiente estructura exacta:\n\n{\n\"nombre_web\": \"Nombre del sitio\",\n\"idioma\": \"Una sola palabra en español (ejemplo: Español, Inglés, Francés)\",\n\"contexto\": \"Resumen profesional estructurado siguiendo exactamente este modelo: 'NOMBREDEPAGINA es una plataforma...' (mantén ese estilo explicativo, descriptivo y orientado a propósito, audiencia y temática principal). El resumen debe ser atemporal, profesional y sin referencias a fechas específicas.\",\n\"categorias_sugeridas\": [\"Categoría 1\", \"Categoría 2\", \"Categoría 3\"],\n\"temas_nuevos\": [\n\"Título sugerido 1\",\n\"Título sugerido 2\",\n\"Título sugerido 3\",\n\"Título sugerido 4\",\n\"Título sugerido 5\",\n\"Título sugerido 6\",\n\"Título sugerido 7\",\n\"Título sugerido 8\"\n]\n}\n\n### TÍTULOS YA EXISTENTES EN ESTA WEB (PROHIBIDO REPETIRLOS O REFORMULARLOS)\n{{ $('Adjuntar títulos').all()[$itemIndex].json.existingTitlesText }}\n\nSi la lista anterior contiene títulos, propone ángulos nuevos que no repitan ni parafraseen ninguno de ellos.\n\nREGLAS IMPORTANTES:\n\nEl JSON debe ser válido y no contener comentarios ni texto adicional.\n\nMáximo 5 categorías.\n\nLas categorías deben estar en el mismo idioma que la web analizada.\n\nEl idioma debe escribirse en español (ejemplo: “Inglés”, no “English”).\n\nEl resumen (contexto) debe ser atemporal, profesional y sin mencionar años concretos.\n\nLos títulos sugeridos:\n\nNO deben incluir años (ej: 2024, 2023, etc.).\n\nNO deben incluir fechas específicas.\n\nDeben ser atemporales y reutilizables en el tiempo.\n\nNo deben hacer referencia a que el contenido fue analizado.\n\nDeben sonar naturales, editoriales y orientados a SEO.\n\nEvita generar títulos que incluyan referencias temporales como “este año”, “actualmente”, “últimas tendencias 2024”, etc.\n\nNo repitas títulos ya existentes en el contenido original.\n\nSi el contenido es insuficiente, infiere el contexto general del sitio de forma coherente y profesional.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        18336,
+        5792
+      ],
+      "id": "0229c8dc-78a2-45a6-8115-7ae48286d209",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.5",
+          "mode": "list",
+          "cachedResultName": "gpt-5.5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        18416,
+        6016
+      ],
+      "id": "63a67f6e-77a4-461b-b5ed-48a145828b8d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "nJOMCbNfcV7iSWQZ",
+          "name": "OpenAI Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos los datos ORIGINALES del Trigger\nconst originalItems = $('Webs a procesar').all();\n\n// 2. Iteramos sobre las respuestas de la IA\nreturn $input.all().map((item, index) => {\n  \n  // A. Sacamos el texto que devolvió la IA\n  const rawContent = item.json.output || item.json.content || item.json.message.content;\n\n  // B. Limpiamos las etiquetas markdown\n  let cleanContent = rawContent;\n  if (rawContent && typeof rawContent === 'string') {\n      cleanContent = rawContent.replace(/```json/g, '').replace(/```/g, '');\n  }\n\n  // C. Convertimos a objeto\n  let aiData = {};\n  try {\n    aiData = JSON.parse(cleanContent);\n  } catch (error) {\n    aiData = { error: \"Error JSON IA\" };\n  }\n\n  // D. RECUPERAMOS LOS DATOS ORIGINALES\n  const original = originalItems[index] ? originalItems[index].json : {};\n  const originalFields = original.fields || original;\n\n  const originalUrl = originalFields.URL || original.URL || \"URL_NO_ENCONTRADA\";\n  const originalEstado = originalFields.Estado || original.Estado;\n\n  const originalNombreWeb = originalFields['Nombre de las webs'] || original['Nombre de las webs'];\n  const originalContexto = originalFields['Contexto de la web'] || original['Contexto de la web'];\n  const originalCategorias = originalFields['Categorías'] || original['Categorías'];\n  const originalIdioma = originalFields['Idiomas'] || original['Idiomas'];\n\n  const isYaAnadida = originalEstado === 'Añadido';\n\n  const nombre_web_final = (originalNombreWeb && String(originalNombreWeb).trim()) ? originalNombreWeb : aiData.nombre_web;\n  const contexto_final = (isYaAnadida && originalContexto) ? originalContexto : aiData.contexto;\n  const categorias_final = (isYaAnadida && originalCategorias)\n    ? originalCategorias\n    : (Array.isArray(aiData.categorias_sugeridas) ? aiData.categorias_sugeridas.join(', ') : (aiData.categorias_sugeridas || ''));\n  const idioma_final = (isYaAnadida && originalIdioma) ? originalIdioma : aiData.idioma;\n\n  return {\n    json: {\n      ...aiData,\n      URL: originalUrl,\n      nombre_web_final,\n      contexto_final,\n      categorias_final,\n      idioma_final\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18688,
+        5792
+      ],
+      "id": "68f6d01a-df37-476a-8875-3af55f53c830",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre de las webs": "={{ $json.nombre_web_final }}",
+            "Contexto de la web": "={{ $json.contexto_final }}",
+            "Categorías": "={{ $json.categorias_final }}",
+            "Idiomas": "={{ $json.idioma_final }}",
+            "URL": "={{ $json.URL }}",
+            "Estado": "Añadido"
+          },
+          "matchingColumns": [
+            "URL"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Nombre de las webs",
+              "displayName": "Nombre de las webs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Añadido",
+                  "value": "Añadido"
+                },
+                {
+                  "name": "No añadido",
+                  "value": "No añadido"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Última vez modificado",
+              "displayName": "Última vez modificado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Usuario WP",
+              "displayName": "Usuario WP",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "WP password",
+              "displayName": "WP password",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Contexto de la web",
+              "displayName": "Contexto de la web",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Categorías",
+              "displayName": "Categorías",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Posts",
+              "displayName": "Posts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Idiomas",
+              "displayName": "Idiomas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Español",
+                  "value": "Español"
+                },
+                {
+                  "name": "Inglés",
+                  "value": "Inglés"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Posts 2",
+              "displayName": "Posts 2",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Frecuencia de publicación",
+              "displayName": "Frecuencia de publicación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Semanal",
+                  "value": "Semanal"
+                },
+                {
+                  "name": "Mensual",
+                  "value": "Mensual"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha de Inicio",
+              "displayName": "Fecha de Inicio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Última publicación",
+              "displayName": "Última publicación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Próxima fecha",
+              "displayName": "Próxima fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": false
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        18912,
+        5712
+      ],
+      "id": "9eb610c1-6fe8-446e-92b3-2df67d189000",
+      "name": "Añadir web",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appTUrm1KWFAhXea8/tblnNFcUahZrNXI7R"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Temas": "={{ $json.temas_nuevos }}",
+            "Estado": "No creado",
+            "Web destino": "={{ [ $json.id ] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Temas",
+              "displayName": "Temas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Web destino",
+              "displayName": "Web destino",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Creado",
+                  "value": "Creado"
+                },
+                {
+                  "name": "No creado",
+                  "value": "No creado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "URL del sitio",
+              "displayName": "URL del sitio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Usuario de WP",
+              "displayName": "Usuario de WP",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "WP app password",
+              "displayName": "WP app password",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Contexto del Prompt",
+              "displayName": "Contexto del Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Mapa de categorías",
+              "displayName": "Mapa de categorías",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Topico RAG",
+              "displayName": "Topico RAG",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha de Publicación",
+              "displayName": "Fecha de Publicación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Webs",
+              "displayName": "Webs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Idiomas (de Webs)",
+              "displayName": "Idiomas (de Webs)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        19584,
+        5792
+      ],
+      "id": "8338784a-35aa-4a73-810a-376746f96153",
+      "name": "Crear temas",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=temas_nuevos",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        19360,
+        5792
+      ],
+      "id": "5ed5e288-e0f8-4664-bb57-adf71a6816a9",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        19136,
+        5792
+      ],
+      "id": "74ba47f4-78ad-4290-b296-94a705d5dba0",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        16096,
+        5792
+      ],
+      "id": "a5a2758b-afc1-42a7-98e0-b9b2060f4f12",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "filterByFormula": "{Estado} != 'Añadido'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        16768,
+        5616
+      ],
+      "id": "10a33e82-bf07-43ac-853e-431e078f41aa",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "filterByFormula": "{Estado} = 'Añadido'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        16320,
+        5792
+      ],
+      "id": "3fb06d66-2ddb-4260-aafc-d46b61305c07",
+      "name": "Search webs añadidas",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblnNFcUahZrNXI7R"
+        },
+        "filterByFormula": "AND({Estado} != 'Creado', {Estado} != 'Publicado')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        16320,
+        5984
+      ],
+      "id": "874b0810-318d-41b4-82f3-408c400ce480",
+      "name": "Search posts pendientes",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        16544,
+        5888
+      ],
+      "id": "2507a29b-718e-4f01-a2bb-4a2d9a9df2da",
+      "name": "Sync webs+posts"
+    },
+    {
+      "parameters": {
+        "jsCode": "const websAnadidas = $('Search webs añadidas').all();\nconst postsPendientes = $('Search posts pendientes').all();\n\nconst pendingWebIds = new Set();\nfor (const postItem of postsPendientes) {\n  const fields = postItem.json.fields || postItem.json;\n  const linked = fields['Web destino'] || [];\n  if (Array.isArray(linked)) {\n    for (const webId of linked) {\n      if (webId) pendingWebIds.add(webId);\n    }\n  }\n}\n\nconst elegibles = websAnadidas.filter((webItem) => {\n  const webId = webItem.json.id;\n  return webId && !pendingWebIds.has(webId);\n});\n\nreturn elegibles.map((i) => ({ json: i.json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16768,
+        5888
+      ],
+      "id": "87c4d36e-2194-4b2e-a82e-592e4f1e211e",
+      "name": "Filtrar webs (b)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        16992,
+        5792
+      ],
+      "id": "b0740b0a-b7fc-4666-bfcd-1a009f2cad9c",
+      "name": "Webs a procesar"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts"
+        },
+        "filterByFormula": "=AND(FIND(LOWER('{{ String($json.URL || $json.fields?.URL || '').replace(/\\/+$/, '').toLowerCase() }}'), LOWER(ARRAYJOIN({URL del sitio}))), {Temas} != '')",
+        "options": {}
+      },
+      "id": "1cfe520a-ab10-4e13-9e83-004cf796c8ee",
+      "name": "Buscar títulos existentes",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        17440,
+        5792
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Adjunta a cada web los títulos ya usados: los vivos en Posts (Airtable)\n// y los archivados en Supabase. Solo lectura: no escribe nada.\n\nconst webs = $('Webs a procesar').all().map((i) => i.json);\nconst posts = $input.all().map((i) => i.json.fields || i.json);\nconst archived = $('Títulos archivados').all().map((i) => i.json);\n\nconst normUrl = (u) => {\n  if (u === null || u === undefined) return '';\n  if (Array.isArray(u)) return u.map(normUrl).filter(Boolean)[0] || '';\n  return String(u).trim().replace(/\\/+$/, '').toLowerCase();\n};\n\nconst titlesByUrl = new Map();\nconst add = (url, tema) => {\n  const t = String(tema || '').trim();\n  if (!t || !url) return;\n  if (!titlesByUrl.has(url)) titlesByUrl.set(url, []);\n  titlesByUrl.get(url).push(t);\n};\n\nfor (const f of posts) add(normUrl(f['URL del sitio']), f['Temas']);\nfor (const row of archived) add(normUrl(row.url_sitio), row.tema);\n\nreturn webs.map((w) => {\n  const base = w.fields ? { ...w, ...w.fields } : { ...w };\n  const url = normUrl(base.URL || base['URL del sitio']);\n  const titles = [...new Set(titlesByUrl.get(url) || [])];\n  return {\n    json: {\n      ...base,\n      existingTitles: titles,\n      existingTitlesText: titles.length\n        ? titles.map((t) => '- ' + t).join('\\n')\n        : '(ninguno)',\n    },\n  };\n});"
+      },
+      "id": "bd68e8aa-3ffd-41ef-9487-45aa1091cf75",
+      "name": "Adjuntar títulos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        17664,
+        5792
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT tema, url_sitio FROM public.posts_archivo\nWHERE tema IS NOT NULL AND btrim(tema) <> ''\n  AND lower(rtrim(btrim(url_sitio), '/')) = lower('{{ String($json.URL || $json.fields?.URL || '').replace(/\\/+$/, '') }}');",
+        "options": {}
+      },
+      "id": "a2a2e43d-f751-4696-8484-9f7a071ef769",
+      "name": "Títulos archivados",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        17216,
+        5792
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "fuHfxAKpy5lK6Jr4",
+          "name": "Supabase Archive"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Añadir web",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Añadir web": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Crear temas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search webs añadidas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search posts pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Webs a procesar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search webs añadidas": {
+      "main": [
+        [
+          {
+            "node": "Sync webs+posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search posts pendientes": {
+      "main": [
+        [
+          {
+            "node": "Sync webs+posts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Sync webs+posts": {
+      "main": [
+        [
+          {
+            "node": "Filtrar webs (b)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar webs (b)": {
+      "main": [
+        [
+          {
+            "node": "Webs a procesar",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Webs a procesar": {
+      "main": [
+        [
+          {
+            "node": "Títulos archivados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar títulos existentes": {
+      "main": [
+        [
+          {
+            "node": "Adjuntar títulos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adjuntar títulos": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Títulos archivados": {
+      "main": [
+        [
+          {
+            "node": "Buscar títulos existentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4343a4bc-d1d1-4afc-b532-11a3b55c6d22",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e299b3034bd5fbae40db28186bf64a1cfc19d582857ab5fcb0b1f45d907fa60d"
+  },
+  "id": "5JV1cKrtKgtuzylZ",
+  "tags": []
+}

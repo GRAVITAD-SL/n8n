@@ -1,0 +1,308 @@
+{
+  "name": "Publicar Programados",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        1728
+      ],
+      "id": "47ba79df-6ce1-495d-933a-575764fc76c8",
+      "name": "Schedule Trigger (12h)"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblrih2FBLhQV1F01",
+          "mode": "list",
+          "cachedResultName": "Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblrih2FBLhQV1F01"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        1728
+      ],
+      "id": "d14e8bfe-2d3a-4cd4-8979-c4d68c3d6fa5",
+      "name": "Buscar Webs",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sites = items.map(item => item.json);\nreturn [{ json: { _sites: sites } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        1728
+      ],
+      "id": "5ce1a0f3-9dde-46e9-8990-940e05a3a333",
+      "name": "Consolidate Sites"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblnNFcUahZrNXI7R"
+        },
+        "filterByFormula": "=AND({Estado} = 'Creado', {WP Post ID} > 0, {Fecha publicación} <= TODAY())",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1376,
+        1728
+      ],
+      "id": "e453bc2e-c283-4caf-b3c7-d08c12073661",
+      "name": "Buscar Posts a Publicar",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sites = $node['Consolidate Sites'].json._sites;\n\nconst siteMap = {};\nfor (const site of sites) {\n  const urlRaw = site.URL;\n  const url = (Array.isArray(urlRaw) ? urlRaw[0] : urlRaw || '').toString().trim().replace(/\\/+$/, '').toLowerCase();\n  siteMap[url] = site;\n}\n\nconst result = [];\nfor (const item of items) {\n  const post = item.json;\n  const urlRaw = post['URL del sitio'];\n  const postUrl = (Array.isArray(urlRaw) ? urlRaw[0] : urlRaw || '').toString().trim().replace(/\\/+$/, '').toLowerCase();\n  const site = siteMap[postUrl];\n\n  if (!site) {\n    continue;\n  }\n\n  const userRaw = site['Usuario WP'];\n  const passRaw = site['WP password'];\n  const user = (Array.isArray(userRaw) ? userRaw[0] : userRaw || '').toString().trim();\n  const passClean = (Array.isArray(passRaw) ? passRaw[0] : passRaw || '').toString().replace(/\\s+/g, '').trim();\n  const headerAuthRaw = `Basic ${Buffer.from(`${user}:${passClean}`, 'utf8').toString('base64')}`;\n\n  result.push({\n    json: {\n      ...post,\n      headerAuthRaw\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        1728
+      ],
+      "id": "3505bba3-71d1-4f27-a3e3-cd0069c2fa18",
+      "name": "Merge Sites with Posts"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ ($json['URL del sitio'] || '').toString().trim().replace(/\\/+$/, '') }}/wp-json/wp/v2/posts/{{ $json['WP Post ID'] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headerAuthRaw }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"status\": \"publish\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1824,
+        1728
+      ],
+      "id": "14e282a5-3dd7-4ede-9e4f-b98fab9ab34b",
+      "name": "Publicar en WordPress"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appOaontVX9RVfWzd",
+          "mode": "list",
+          "cachedResultName": "Tabla Webs",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblnNFcUahZrNXI7R",
+          "mode": "list",
+          "cachedResultName": "Posts",
+          "cachedResultUrl": "https://airtable.com/appOaontVX9RVfWzd/tblnNFcUahZrNXI7R"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "WP Post ID": "={{ $json.id }}",
+            "Estado": "Publicado"
+          },
+          "matchingColumns": [
+            "WP Post ID"
+          ],
+          "schema": [
+            {
+              "id": "WP Post ID",
+              "displayName": "WP Post ID",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Creado",
+                  "value": "Creado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2048,
+        1728
+      ],
+      "id": "a1dc9f69-4e78-4be3-aac0-00b7f1a1e779",
+      "name": "Update Estado Publicado",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "V6urJEXGUMwKCIFS",
+          "name": "Airtable Synergiart"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (12h)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Webs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Webs": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidate Sites": {
+      "main": [
+        [
+          {
+            "node": "Buscar Posts a Publicar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Posts a Publicar": {
+      "main": [
+        [
+          {
+            "node": "Merge Sites with Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Sites with Posts": {
+      "main": [
+        [
+          {
+            "node": "Publicar en WordPress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publicar en WordPress": {
+      "main": [
+        [
+          {
+            "node": "Update Estado Publicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cc8f7f80-c76d-4399-9597-decc6dd291fd",
+  "meta": {
+    "instanceId": "34cae7488d1577f4b14efa2b1a18a64ba4e4777055cf99a647de27c2ee714f74"
+  },
+  "id": "EbiIoPD0jge8Y1AR",
+  "tags": []
+}

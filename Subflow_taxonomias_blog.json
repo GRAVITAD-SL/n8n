@@ -1,0 +1,754 @@
+{
+  "name": "Subflow - Taxonomias Blog",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -4000,
+        5920
+      ],
+      "id": "d6f788c2-e246-4e11-a4c9-027083a3fb5b",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst userRaw = input.wpUser;\nconst passRaw = input.wpPassword;\nconst user = (Array.isArray(userRaw) ? userRaw[0] : userRaw || 'admonwp').toString().trim();\nconst passClean = (Array.isArray(passRaw) ? passRaw[0] : passRaw || '').toString().replace(/\\s+/g, '').trim();\n\nreturn [{\n  json: {\n    headerAuthRaw: `Basic ${Buffer.from(`${user}:${passClean}`, 'utf8').toString('base64')}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3776,
+        5824
+      ],
+      "id": "919b4cfc-00bd-4ef2-a3f7-a8488bde99c5",
+      "name": "Auth taxonomias"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst normalizeText = (value) => value\n  .toString()\n  .replace(/\\r?\\n/g, ' ')\n  .replace(/[\"'\\[\\]]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst trimWordsToLength = (text, maxLength) => {\n  if (text.length <= maxLength) return text;\n\n  const words = text.split(' ').filter(Boolean);\n  let result = '';\n\n  for (const word of words) {\n    const candidate = result ? `${result} ${word}` : word;\n    if (candidate.length > maxLength) break;\n    result = candidate;\n  }\n\n  return result || text.slice(0, maxLength).trim();\n};\n\nconst normalizeCategory = (value) => {\n  const normalized = normalizeText(value);\n  if (!normalized) return '';\n\n  const primaryChunk = normalized.split(/[,:;|()]/)[0].trim();\n  const compact = primaryChunk.replace(/\\s+/g, ' ');\n\n  // ⚠️ IMPORTANTE: eliminamos el .slice(0, 3) para no truncar cosas como \"Análisis Predictivo\"\n  const shortValue = trimWordsToLength(compact, 32);\n\n  return shortValue.length >= 3 ? shortValue : '';\n};\n\nconst toArray = (value, formatter = normalizeText) => {\n  if (Array.isArray(value)) return value.map(formatter).filter(Boolean);\n  if (value === null || value === undefined) return [];\n\n  const raw = value.toString().trim();\n  if (!raw) return [];\n\n  if (raw.startsWith('[') && raw.endsWith(']')) {\n    try {\n      const parsed = JSON.parse(raw);\n      if (Array.isArray(parsed)) return parsed.map(formatter).filter(Boolean);\n    } catch {}\n  }\n\n  return raw.split(',').map(formatter).filter(Boolean);\n};\n\nconst dedupe = (values) =>\n  Array.from(new Map(values.map((value) => [value.toLowerCase(), value])).values());\n\n// ===== TAGS (NO SE TOCA) =====\nconst rawTags = toArray(input.tags, normalizeText)\n  .map((tag) => trimWordsToLength(tag, 60));\n\nconst tags = dedupe(rawTags).slice(0, 3);\n\n// ===== CATEGORÍAS (CORREGIDO) =====\nconst rawCategoriesSource =\n  input?.fields?.[\"Categorías\"] ??\n  input?.fields?.Categorías ??\n  input?.[\"Categorías\"] ??\n  input?.categoryNames ??\n  input?.categories ??\n  '';\n\nconst explicitCategories = toArray(rawCategoriesSource, normalizeCategory).filter(Boolean);\n\n// 👉 SOLO usamos la primera categoría de Airtable\nconst categoryNames = explicitCategories.length > 0\n  ? [explicitCategories[0]]\n  : ['General'];\n\nreturn [{\n  json: {\n    ...input,\n    categoryNames,\n    tags\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3776,
+        6016
+      ],
+      "id": "76315d37-f71b-4a00-b07a-0b8f67957a96",
+      "name": "Preparar taxonomias"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "categoryNames",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -3552,
+        5824
+      ],
+      "id": "6f9e08c8-d4bd-4c16-8f19-fbfcf5c12c40",
+      "name": "Filtrar categorynames1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/categories",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.categoryNames.toString().trim() }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3328,
+        5952
+      ],
+      "id": "b281bf35-0b08-46f3-b90c-a6d4a43d145a",
+      "name": "Buscar categoria1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -3104,
+        5824
+      ],
+      "id": "991b6fbf-f33f-4660-b733-b289ce625049",
+      "name": "Merge categorias"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ea544265-6523-4131-ac6f-d4adf4cf2451",
+              "leftValue": "={{ (() => { try { const requested = ($json.categoryNames ?? '').toString().trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const requestedSlug = requested.replace(/\\s+/g, '-'); const tokenize = (value) => value.toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim().split(' ').filter(Boolean); const scoreCandidate = (candidateName, candidateSlug) => { if (!candidateName && !candidateSlug) return 0; if (candidateName === requested || candidateSlug === requestedSlug) return 100; let score = 0; if (candidateName.includes(requested) || requested.includes(candidateName)) score += 35; if (candidateSlug.includes(requestedSlug) || requestedSlug.includes(candidateSlug)) score += 35; const requestedTokens = tokenize(requested); const candidateTokens = new Set(tokenize(candidateName)); const shared = requestedTokens.filter((token) => candidateTokens.has(token)).length; if (requestedTokens.length > 0) score += Math.round((shared / requestedTokens.length) * 40); return score; }; const raw = $json.data ?? $json.body ?? []; const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; const candidates = Array.isArray(parsed) ? parsed : parsed && parsed.id ? [parsed] : []; let bestScore = 0; for (const candidate of candidates) { const candidateName = (candidate?.name || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const candidateSlug = (candidate?.slug || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, '-').trim(); bestScore = Math.max(bestScore, scoreCandidate(candidateName, candidateSlug)); } return bestScore >= 45 ? 1 : 0; } catch { return 0; } })() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2880,
+        5824
+      ],
+      "id": "da0649e2-244b-44ec-8fdd-0a25097bca37",
+      "name": "If categoria existe1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst requested = (item.categoryNames ?? '').toString().trim();\nconst raw = item.data ?? item.body ?? item;\n\nconst normalize = (value) => value\n  .toString()\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s-]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst normalizeSlug = (value) => normalize(value).replace(/\\s+/g, '-');\nconst tokenize = (value) => normalize(value).split(' ').filter(Boolean);\n\nfunction scoreCandidate(candidateName, candidateSlug, requestedName, requestedSlug) {\n  if (!candidateName && !candidateSlug) return 0;\n  if (candidateName === requestedName || candidateSlug === requestedSlug) return 100;\n\n  let score = 0;\n  if (candidateName.includes(requestedName) || requestedName.includes(candidateName)) score += 35;\n  if (candidateSlug.includes(requestedSlug) || requestedSlug.includes(candidateSlug)) score += 35;\n\n  const requestedTokens = tokenize(requestedName);\n  const candidateTokens = new Set(tokenize(candidateName));\n  const shared = requestedTokens.filter((token) => candidateTokens.has(token)).length;\n  if (requestedTokens.length > 0) score += Math.round((shared / requestedTokens.length) * 40);\n\n  return score;\n}\n\nlet parsed = raw;\nif (typeof raw === 'string') {\n  try {\n    parsed = JSON.parse(raw);\n  } catch {\n    parsed = [];\n  }\n}\n\nconst candidates = Array.isArray(parsed) ? parsed : parsed?.id ? [parsed] : [];\nconst requestedName = normalize(requested);\nconst requestedSlug = normalizeSlug(requested);\nlet bestMatch = null;\nlet bestScore = 0;\n\nfor (const candidate of candidates) {\n  const candidateName = normalize(candidate?.name || '');\n  const candidateSlug = normalize(candidate?.slug || '');\n  const score = scoreCandidate(candidateName, candidateSlug, requestedName, requestedSlug);\n  if (score > bestScore) {\n    bestScore = score;\n    bestMatch = candidate;\n  }\n}\n\nif (bestMatch?.id && bestScore >= 45) {\n  return [{ json: { id: bestMatch.id } }];\n}\n\nreturn [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        5728
+      ],
+      "id": "8e95e4e3-7480-47d9-b4f2-b66e23218276",
+      "name": "Recuperar Id categoria1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/categories",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Auth taxonomias').first().json.headerAuthRaw }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.categoryNames }}"
+            },
+            {
+              "name": "slug",
+              "value": "={{ $json.categoryNames.toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, '').trim().replace(/\\s+/g, '-') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2656,
+        5920
+      ],
+      "id": "497521ec-7e09-498d-9e03-1820d259584f",
+      "name": "Crear categoria1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nif (item.id) {\n  return [{ json: { id: item.id } }];\n}\n\nif (item.code === 'term_exists') {\n  const termId = item.data?.term_id || (Array.isArray(item.additional_data) && item.additional_data[0]);\n  if (termId) return [{ json: { id: termId } }];\n}\n\nreturn [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        5920
+      ],
+      "id": "b2582ec3-4061-42c3-95f6-d8063e998eb1",
+      "name": "Normalizar ID categoria creada1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2208,
+        5824
+      ],
+      "id": "5ddd9381-2c0c-4c6e-9c8b-50ccddcd2242",
+      "name": "Merge categorias ids"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allIds = items.map(item => item.json.id || (item.json[0] && item.json[0].id)).filter(Boolean);\nreturn [{ json: { final_ids: allIds } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1984,
+        5824
+      ],
+      "id": "a0a37f9f-6dd9-4248-bb32-61f42adc718a",
+      "name": "Code categorias"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "tags",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -3552,
+        6208
+      ],
+      "id": "a30af8c8-4236-4059-b3b5-0a3ea3255805",
+      "name": "Filtrar tags1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/tags",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.tags.toString().trim() }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -3328,
+        6288
+      ],
+      "id": "ba5c087b-c8bb-4190-8dba-072171f07dad",
+      "name": "Buscar tag1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -3104,
+        6208
+      ],
+      "id": "4ae76275-d398-4d90-a7a4-d4e49aaf153e",
+      "name": "Merge tags1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7702ea2-c177-404d-a005-a00324d9e644",
+              "leftValue": "={{ (() => { try { const requested = ($json.tags ?? '').toString().trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const requestedSlug = requested.replace(/\\s+/g, '-'); const tokenize = (value) => value.toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim().split(' ').filter(Boolean); const scoreCandidate = (candidateName, candidateSlug) => { if (!candidateName && !candidateSlug) return 0; if (candidateName === requested || candidateSlug === requestedSlug) return 100; let score = 0; if (candidateName.includes(requested) || requested.includes(candidateName)) score += 35; if (candidateSlug.includes(requestedSlug) || requestedSlug.includes(candidateSlug)) score += 35; const requestedTokens = tokenize(requested); const candidateTokens = new Set(tokenize(candidateName)); const shared = requestedTokens.filter((token) => candidateTokens.has(token)).length; if (requestedTokens.length > 0) score += Math.round((shared / requestedTokens.length) * 40); return score; }; const raw = $json.data ?? $json.body ?? $json; const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; const candidates = Array.isArray(parsed) ? parsed : parsed?.id ? [parsed] : parsed && typeof parsed === 'object' && parsed['0']?.id ? Object.values(parsed) : []; let bestScore = 0; for (const candidate of candidates) { const candidateName = (candidate?.name || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim(); const candidateSlug = (candidate?.slug || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, '-').trim(); bestScore = Math.max(bestScore, scoreCandidate(candidateName, candidateSlug)); } return bestScore >= 45 ? 1 : 0; } catch { return 0; } })() }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2880,
+        6208
+      ],
+      "id": "0d7ec575-2f40-4464-822b-4ffb31a94dd3",
+      "name": "If tag existe1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst requested = (item.tags ?? '').toString().trim();\nconst raw = item.data ?? item.body ?? item;\n\nconst normalize = (value) => value\n  .toString()\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s-]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst normalizeSlug = (value) => normalize(value).replace(/\\s+/g, '-');\nconst tokenize = (value) => normalize(value).split(' ').filter(Boolean);\n\nfunction scoreCandidate(candidateName, candidateSlug, requestedName, requestedSlug) {\n  if (!candidateName && !candidateSlug) return 0;\n  if (candidateName === requestedName || candidateSlug === requestedSlug) return 100;\n\n  let score = 0;\n  if (candidateName.includes(requestedName) || requestedName.includes(candidateName)) score += 35;\n  if (candidateSlug.includes(requestedSlug) || requestedSlug.includes(candidateSlug)) score += 35;\n\n  const requestedTokens = tokenize(requestedName);\n  const candidateTokens = new Set(tokenize(candidateName));\n  const shared = requestedTokens.filter((token) => candidateTokens.has(token)).length;\n  if (requestedTokens.length > 0) score += Math.round((shared / requestedTokens.length) * 40);\n\n  return score;\n}\n\nlet parsed = raw;\nif (typeof raw === 'string') {\n  try {\n    parsed = JSON.parse(raw);\n  } catch {\n    parsed = [];\n  }\n}\n\nconst candidates = Array.isArray(parsed) ? parsed : parsed?.id ? [parsed] : parsed && typeof parsed === 'object' && parsed['0']?.id ? Object.values(parsed) : [];\nconst requestedName = normalize(requested);\nconst requestedSlug = normalizeSlug(requested);\nlet bestMatch = null;\nlet bestScore = 0;\n\nfor (const candidate of candidates) {\n  const candidateName = normalize(candidate?.name || '');\n  const candidateSlug = normalize(candidate?.slug || '');\n  const score = scoreCandidate(candidateName, candidateSlug, requestedName, requestedSlug);\n  if (score > bestScore) {\n    bestScore = score;\n    bestMatch = candidate;\n  }\n}\n\nif (bestMatch?.id && bestScore >= 45) {\n  return [{ json: { id: bestMatch.id } }];\n}\n\nreturn [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        6112
+      ],
+      "id": "dd86bee3-ea50-4c66-93b3-b7013b890d55",
+      "name": "Recuperar Tag Id1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/tags",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Auth taxonomias').first().json.headerAuthRaw }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.tags }}"
+            },
+            {
+              "name": "slug",
+              "value": "={{ $json.tags.toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s-]/g, '').trim().replace(/\\s+/g, '-') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2656,
+        6304
+      ],
+      "id": "2f1a6636-2878-465b-9bc9-d99e9a89102d",
+      "name": "Crear tag1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nif (item.id) {\n  return [{ json: { id: item.id } }];\n}\n\nif (item.code === 'term_exists') {\n  const termId = item.data?.term_id || (Array.isArray(item.additional_data) && item.additional_data[0]);\n  if (termId) return [{ json: { id: termId } }];\n}\n\nreturn [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        6304
+      ],
+      "id": "2425c969-f56e-4be1-a7a2-00b185f61663",
+      "name": "Normalizar ID tag creado1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2208,
+        6208
+      ],
+      "id": "8fa097d9-5c99-4dd6-9623-db85448c88fd",
+      "name": "Merge tags2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allIds = items.map(item => item.json.id || (item.json[0] && item.json[0].id)).filter(Boolean);\nreturn [{ json: { final_tag_ids: allIds } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1984,
+        6208
+      ],
+      "id": "5c9e60b7-e16a-447f-8d6e-f1ac5bde7071",
+      "name": "Code tags"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1760,
+        6016
+      ],
+      "id": "ac21550e-1a1c-4e96-9423-4d509132edaa",
+      "name": "Merge salida taxonomias"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "da3bfc8f-2ef7-4f70-8ddb-a7274ec1da98",
+              "name": "final_ids",
+              "value": "={{ $json.final_ids || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "5137dd26-b22b-4f3e-917f-6f16942d48cb",
+              "name": "final_tag_ids",
+              "value": "={{ $json.final_tag_ids || [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1536,
+        6016
+      ],
+      "id": "7b6a19c9-6d4e-4e95-98b7-5f3447873b53",
+      "name": "Salida taxonomias"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Preparar taxonomias",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Auth taxonomias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar taxonomias": {
+      "main": [
+        [
+          {
+            "node": "Filtrar categorynames1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filtrar tags1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar categorynames1": {
+      "main": [
+        [
+          {
+            "node": "Buscar categoria1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar categoria1": {
+      "main": [
+        [
+          {
+            "node": "Merge categorias",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge categorias": {
+      "main": [
+        [
+          {
+            "node": "If categoria existe1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If categoria existe1": {
+      "main": [
+        [
+          {
+            "node": "Recuperar Id categoria1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear categoria1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recuperar Id categoria1": {
+      "main": [
+        [
+          {
+            "node": "Merge categorias ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear categoria1": {
+      "main": [
+        [
+          {
+            "node": "Normalizar ID categoria creada1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar ID categoria creada1": {
+      "main": [
+        [
+          {
+            "node": "Merge categorias ids",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge categorias ids": {
+      "main": [
+        [
+          {
+            "node": "Code categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar tags1": {
+      "main": [
+        [
+          {
+            "node": "Buscar tag1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge tags1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar tag1": {
+      "main": [
+        [
+          {
+            "node": "Merge tags1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge tags1": {
+      "main": [
+        [
+          {
+            "node": "If tag existe1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If tag existe1": {
+      "main": [
+        [
+          {
+            "node": "Recuperar Tag Id1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear tag1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recuperar Tag Id1": {
+      "main": [
+        [
+          {
+            "node": "Merge tags2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear tag1": {
+      "main": [
+        [
+          {
+            "node": "Normalizar ID tag creado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar ID tag creado1": {
+      "main": [
+        [
+          {
+            "node": "Merge tags2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge tags2": {
+      "main": [
+        [
+          {
+            "node": "Code tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code categorias": {
+      "main": [
+        [
+          {
+            "node": "Merge salida taxonomias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code tags": {
+      "main": [
+        [
+          {
+            "node": "Merge salida taxonomias",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge salida taxonomias": {
+      "main": [
+        [
+          {
+            "node": "Salida taxonomias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5912f57b-59fa-460a-8cca-7f9fddc1e58d",
+  "meta": {
+    "instanceId": "34cae7488d1577f4b14efa2b1a18a64ba4e4777055cf99a647de27c2ee714f74"
+  },
+  "id": "KI6T6CBTmSac0Lwl",
+  "tags": []
+}

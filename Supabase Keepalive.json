@@ -1,0 +1,71 @@
+{
+  "name": "Supabase Keepalive",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "f247cc29-98e8-4009-bfce-e19ff77ef124",
+      "name": "Schedule Trigger (semanal)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 1 AS ok;",
+        "options": {}
+      },
+      "id": "2415781c-e509-415e-ae6a-f6cab71eb90d",
+      "name": "Ping Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "fuHfxAKpy5lK6Jr4",
+          "name": "Supabase Archive"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (semanal)": {
+      "main": [
+        [
+          {
+            "node": "Ping Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d1c92912-216a-4bec-8299-0cc8471a3d59",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e299b3034bd5fbae40db28186bf64a1cfc19d582857ab5fcb0b1f45d907fa60d"
+  },
+  "id": "MQTWzLYKyJRIPLEA",
+  "tags": []
+}

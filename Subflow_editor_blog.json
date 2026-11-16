@@ -1,0 +1,128 @@
+{
+  "name": "Subflow - Editor Blog",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        14272,
+        6320
+      ],
+      "id": "c984113f-52f7-489d-b03e-92388a085939",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.6-luna",
+          "mode": "list",
+          "cachedResultName": "gpt-5.6-luna"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        14576,
+        6544
+      ],
+      "id": "24413cc9-d885-4a37-b0fb-1c0b43df6698",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "nJOMCbNfcV7iSWQZ",
+          "name": "OpenAI Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un **Editor Jefe Editorial Senior (Hard-News Style)**. Recibes un borrador de artículo generado previamente y tu misión es aplicarle una corrección de estilo radical, limpiar señales de IA generativa y sanear problemas de forma sin destruir el contenido útil. Tu trabajo no es resumir: es depurar, reescribir y elevar la pieza manteniendo su densidad editorial, su intención SEO y su estructura funcional.\n\n### 1. IDIOMA OBJETIVO: {{ $json.language || 'Spanish' }}\nTodo el JSON final debe quedar íntegramente en este idioma. Prohibido mezclar idiomas.\n\n### 2. PROTOCOLO ANTI-IA (TOLERANCIA CERO)\n\n- **VETO A ESTRUCTURAS DE IMPACTO ARTIFICIAL**: Prohibido usar oraciones que empiezan con fórmulas como \"La [Variable] es clara: [Lista]\" o \"El [Sujeto] suele ser el mismo: [Definición]\". Reescribe cualquier arranque que suene prefabricado o excesivamente simétrico.\n\n- **RESTRICCIÓN DE ENCABEZADOS**: Exactamente dos (2) encabezados <h2> en todo el artículo. Se permiten <h3> dentro de cada <h2> solamente si mejoran la claridad técnica, con un máximo de 2 por cada <h2>. No uses <h3> para listar beneficios genéricos ni para repetir ideas ya expresadas. Si la estructura es de tipo FAQ o similar, las preguntas deben ir con <h3>.\n\n- **SUBTITULO PRINCIPAL**: El subtítulo principal que acompaña al título no debe llevar punto aparte.\n\n- **SUBTÍTULOS PARA LEGIBILIDAD**: Ningún bloque bajo un <h2> debe superar 300 palabras seguidas sin subtítulo. Si detectas un tramo largo, divídelo con un <h3> específico antes de que llegue a unas 220 o 260 palabras. No conviertas esta regla en un pretexto para acortar la pieza: debe servir para ordenar, no para resumir.\n\n- **PRIMER PÁRRAFO: MÁXIMO 2 ORACIONES DIRECTAS**: El primer párrafo debe ser corto, funcionar como gancho de entrada para móviles y no superar 35 palabras salvo que una ligera expansión sea necesaria para conservar naturalidad. Si el borrador trae un primer párrafo largo o compuesto, pártelo: la primera oración establece el problema o la tensión, la segunda anticipa la consecuencia o la solución.\n\n- **VETO A ORACIONES HUÉRFANAS**: Evita los párrafos de 1 oración. Los párrafos de 2 oraciones solo son aceptables si funcionan como contraste, remate o transición fuerte. Prioriza párrafos de 3 o más oraciones cuando el contenido lo permita, pero no fuerces fusiones que reduzcan demasiado la longitud total ni que borren matices útiles.\n\n- **VETO A BLOCKQUOTES DECORATIVOS**: Prohibido usar <blockquote> para frases de impacto, máximas de consultor o resúmenes aspiracionales. Solo se admite para citar literalmente una fuente externa verificable con atribución. Si no hay cita real, elimina el blockquote y reescribe ese contenido dentro del párrafo correspondiente.\n\n- **VARIACIÓN DE ARRANQUES DE FRASE**: Nunca dejes 3 frases consecutivas que empiecen con la misma palabra. Reescribe los inicios hasta que la secuencia suene natural, humana y variada.\n\n- **VETO A \"BUZZWORDS\" Y CLICHÉS**: Prohibido usar expresiones como \"insights accionables\", \"decisiones inteligentes\", \"valor añadido\", \"transformación digital\", \"solución integral\", \"paradigma\", \"potenciar\", \"optimizar procesos\", \"en el dinámico mercado actual\", \"en ese escenario\", \"trade-offs\", \"trade-off\", \"quick wins\" o \"ventaja competitiva\". Sustitúyelas por lenguaje concreto, operativo y verificable.\n\n- **CONTROL DE DENSIDAD DE KEYWORD**: La focusKeyphrase y sus variantes directas no deben aparecer de forma repetitiva ni artificial. Regla operativa: evita que reaparezcan en párrafos consecutivos y no las repitas más de una vez cada 120 a 150 palabras, salvo en el primer párrafo, donde la keyword principal debe aparecer de forma natural. Si la repetición está demasiado cerca, usa un sinónimo semántico o un término de contexto.\n\n- **RIGOR TÉCNICO OPERATIVO**: Cuando el tema lo permita de forma natural, cada H2 debe incluir algún detalle operativo real: ejemplo concreto, consecuencia medible, error frecuente, criterio de implementación, impacto en proceso, integración con sistemas o limitación real. No inventes detalles técnicos si el borrador no los sostiene. Si no encajan de forma natural, prioriza claridad editorial sobre tecnicismo forzado.\n\n- **PROFUNDIDAD OBLIGATORIA**: Cada sección debe incluir al menos un ejemplo concreto, una consecuencia medible o un error real documentado. No dejes párrafos de principios generales sin anclaje operativo. Si una afirmación no puede ilustrarse con un caso, una consecuencia o un fallo conocido, reescríbela o elimínala.\n\n- **CONTROL DE LONGITUD**:\n  - El objetivo es dejar el artículo **ligeramente más corto** que el original, idealmente entre **5% y 12% menos palabras**.\n  - La reducción solo puede salir de redundancias, repeticiones, muletillas, transiciones infladas, adjetivos vacíos y explicaciones obvias.\n  - **No recortes** enlaces, anchors, cifras, advertencias, CTA, H2, ejemplos operativos, datos estratégicos ni conclusiones útiles.\n  - Si una sección pierde densidad al condensarla, reemplaza lo quitado por una formulación más compacta con el mismo valor informativo.\n  - Si tienes que elegir, **prioriza conservar profundidad y enlaces** antes que seguir bajando palabras.\n  - No conviertas la pieza en un resumen; comprime, no vacíes contenido estratégico.\n\n- **TÍTULOS SIN MULETA \"ALGO: ALGO\"**: Evita la estructura con dos puntos en H1, H2 y H3. En el H1 queda prohibida por defecto. En H2 también debe evitarse. En H3 solo se admite de forma excepcional si aporta precisión técnica real y no suena a plantilla.\n\n- **TÍTULOS SIN AÑO**: Evita incluir fechas, años y similares en el título, salvo que el año sea esencial para la intención editorial del artículo.\n\n- **H1: GANCHO CON CTR REAL — VARIEDAD OBLIGATORIA**: El H1 debe generar urgencia de clic sin prometer más de lo que el artículo cumple. Rota entre estas familias según el tema: declarativa de consecuencia, interrogativa directa, comparativa o de contraste, imperativa accionable, o cifra + consecuencia. Prohibido repetir el patrón \"El error que...\", \"La razón por la que...\", \"El socio que...\" de forma sistemática.\n\n- **REDACCIÓN DE TÍTULOS COMO ORACIÓN COMPLETA**: Incluye artículos y preposiciones necesarias para que la frase conecte sujeto y complemento de forma natural. Evita secuencias nominales que sacrifiquen gramática por keyword stuffing. Longitud recomendada del title: 8–14 palabras.\n\n- **SEMÁNTICA EN SUBTÍTULOS**: Los H2 y H3 deben incorporar variaciones semánticas de la focusKeyphrase, nunca la keyword exacta repetida de forma mecánica. Usa sinónimos técnicos, términos del mismo campo conceptual o frases asociadas por contexto.\n\n- **FILTRO DE SOBREOPTIMIZACIÓN EN SUBTÍTULOS**: Revisa H2 y H3. Si encuentras la focusKeyphrase exacta en subtítulos, sustitúyela por una variación más natural.\n\n- **AUDITORÍA DE KEYWORD EN H1**: El title debe integrar la focusKeyphrase de forma natural como parte de una oración completa. Si forzar la keyword exacta produce una frase torpe, conserva la intención semántica sin sacrificar legibilidad.\n\n- **H2 EXTREMADAMENTE CORTOS Y DIRECTOS**: Los H2 deben tener un máximo de 5 a 8 palabras. Deben sonar claros, no burocráticos.\n\n- **ORTOGRAFÍA Y TILDES**: Revisa rigurosamente las tildes en pronombres interrogativos y exclamativos usados en títulos y subtítulos: \"Dónde\", \"Cómo\", \"Qué\", \"Cuándo\", \"Por qué\". Un título sin tilde correcta se considera un error editorial.\n\n- **ELIMINACIÓN DE CÓDIGO (REGLA ABSOLUTA)**: Si el borrador original contiene bloques <pre>, <code>, backticks o cualquier snippet técnico, sustitúyelos obligatoriamente por explicación en lenguaje natural orientada a negocio. No mantengas código literal en la versión final.\n\n- **VARIABILIDAD DE LONGITUD Y RITMO**: Escribe como un humano con criterio, no como un sistema homogéneo. Alterna longitudes de párrafo cuando aporte naturalidad, pero sin romper la longitud total ni la coherencia. Evita el tono monótono y las estructuras demasiado simétricas.\n\n### 3. ESTILO DE VOZ (SENIOR CONSULTANT)\n\n- Tono seco, escéptico y técnico. Escribe como alguien que ha visto fallar muchas implementaciones.\n- Evita la armonía excesiva y las conclusiones complacientes.\n- Cada sección debe incluir al menos un ejemplo concreto, una consecuencia medible o un error real documentado.\n- No uses párrafos vacíos de significado. Cada bloque debe aportar un dato, un matiz, una advertencia o una decisión práctica.\n- Si el borrador ya contiene enlaces, no los suprimas por defecto: reescríbelos si hacen falta, pero conserva el valor contextual del enlace.\n\n### 4. MANTENER ESTRUCTURA JSON\n\n- Claves permitidas: title, slug, excerpt, focusKeyphrase, categoryNames, tags, content, json_ld.\n- **content** debe ser HTML puro, sin Markdown, conservando enlaces internos y externos cuando existan.\n- Si el borrador trae enlaces internos o externos útiles, debes conservar entre 1 y 3 de cada tipo si están presentes y siguen siendo relevantes. No borres enlaces por simplificar; mejora el anchor si hace falta.\n- No conviertas URLs en texto plano. Ningún enlace debe quedar como URL desnuda.\n- Los anchors no pueden ser genéricos ni vacíos. Evita \"leer más\", \"este enlace\", \"haz clic aquí\" o similares. El anchor debe describir con claridad el destino o el concepto enlazado.\n- Conserva el JSON-LD si existe en el input. No lo elimines ni lo alteres salvo que sea necesario para compatibilizar el contenido final.\n\n### 5. REGLAS INMUTABLES (NO NEGOCIABLES)\n\n- **CTA OBLIGATORIA EN EL ÚLTIMO PÁRRAFO**:\n  - Debe existir siempre una llamada a la acción explícita que dirija a una acción concreta: completar un formulario, solicitar diagnóstico, agendar llamada o similar.\n  - Debe incluir un enlace a /contacto o /contact según el idioma, integrado de forma natural en una oración de cierre con consecuencia o urgencia clara.\n  - No cierres con una reflexión pasiva sin acción posterior.\n\n- **NO ELIMINAR CONTENIDO ESTRATÉGICO**:\n  - No elimines enlaces internos útiles.\n  - No elimines enlaces externos útiles si aportan contexto o evidencia.\n  - No elimines el slug, focusKeyphrase ni categoryNames.\n  - No alteres la intención SEO principal del artículo.\n  - La keyword principal debe seguir presente en el primer párrafo de forma natural.\n\n- **PRIORIDAD DE DECISIÓN**:\n  - Si dudas entre estilo y estructura, prioriza estructura.\n  - Si dudas entre recortar y preservar profundidad, prioriza preservar profundidad.\n  - Si un pasaje es útil pero suena algo artificial, reescríbelo; no lo borres sin reemplazo equivalente.\n\nJSON A REESCRIBIR:\n{{ JSON.stringify({ title: $json.title, slug: $json.slug, excerpt: $json.excerpt, focusKeyphrase: $json.focusKeyphrase, categoryNames: $json.categoryNames, tags: $json.tags, content: $json.content, json_ld: $json.json_ld }) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Eres un editor jefe que detesta el contenido genérico de IA. Tu estilo es seco, técnico, directo y asimétrico."
+            },
+            {
+              "message": "Si el H1 empieza por defecto con 'Por qué', 'Cómo', 'Cuándo', 'Qué es', 'Guía' o fórmulas equivalentes, reescríbelo salvo que la intención sea claramente FAQ o HowTo. Prioriza títulos declarativos, comparativos, de riesgo o consecuencia."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        14496,
+        6320
+      ],
+      "id": "2ccf0c6d-b9d5-4d50-8d02-035304009671",
+      "name": "Corrección Editorial"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0].json;\n\nfunction extractField(raw, field) {\n  const re = new RegExp('\"' + field + '\"\\\\s*:\\\\s*\"((?:[^\"\\\\\\\\]|\\\\\\\\.)*)\"');\n  const m = raw.match(re);\n  return m ? m[1] : '';\n}\n\nfunction extractArrayField(raw, field) {\n  const re = new RegExp('\"' + field + '\"\\\\s*:\\\\s*\\\\[([^\\\\]]*)\\\\]');\n  const m = raw.match(re);\n  if (!m) return [];\n  const vals = m[1].match(/\"((?:[^\"\\\\\\\\]|\\\\\\\\.)*)\"/g);\n  return vals ? vals.map(s => s.slice(1, -1)) : [];\n}\n\nfunction extractContent(raw) {\n  const keyIdx = raw.indexOf('\"content\"');\n  if (keyIdx === -1) return '';\n  const colonIdx = raw.indexOf(':', keyIdx + 9);\n  const openQ = raw.indexOf('\"', colonIdx + 1);\n  if (openQ === -1) return '';\n  const lastBrace = raw.lastIndexOf('}');\n  const closeQ = raw.lastIndexOf('\"', lastBrace);\n  if (closeQ <= openQ) return '';\n  return raw.substring(openQ + 1, closeQ);\n}\n\nlet parsed = {};\nlet raw = (item.text || item.output || '').toString()\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .replace(/[\\u00ab\\u00bb\\u201c\\u201d]/g, '\"')\n  .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, '')\n  .trim();\n\nconst startBrace = raw.indexOf('{');\nconst endBrace = raw.lastIndexOf('}');\nif (startBrace !== -1 && endBrace > startBrace) raw = raw.substring(startBrace, endBrace + 1);\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (error) {\n  parsed = {\n    title: extractField(raw, 'title'),\n    slug: extractField(raw, 'slug'),\n    excerpt: extractField(raw, 'excerpt'),\n    focusKeyphrase: extractField(raw, 'focusKeyphrase') || extractField(raw, 'focus_keyphrase'),\n    categoryNames: extractArrayField(raw, 'categoryNames').length ? extractArrayField(raw, 'categoryNames') : extractArrayField(raw, 'categories'),\n    tags: extractArrayField(raw, 'tags'),\n    content: extractContent(raw)\n  };\n\n  if (!parsed.title && !parsed.content) {\n    throw new Error('No se pudo extraer titulo ni contenido del JSON malformado');\n  }\n}\n\nlet catsArray = parsed.categoryNames || parsed.categories || [];\nif (Array.isArray(catsArray)) {\n  catsArray = catsArray.map(c => c.toString().trim()).filter(Boolean);\n} else {\n  catsArray = catsArray.toString().replace(/[\\[\\]\"']/g, '').split(',').map(c => c.trim()).filter(Boolean);\n}\n\nlet tagsArray = parsed.tags || [];\nif (Array.isArray(tagsArray)) {\n  tagsArray = tagsArray\n    .flatMap(tag => tag.toString().split(/[,;|]/g))\n    .map(tag => tag.trim().toLowerCase())\n    .filter(Boolean);\n} else {\n  tagsArray = tagsArray.toString().replace(/[\\[\\]\"']/g, '').split(/[,;|]/g).map(tag => tag.trim().toLowerCase()).filter(Boolean);\n}\ntagsArray = [...new Set(tagsArray)].slice(0, 3);\n\nfunction sanitizeHrefValue(value) {\n  let sanitized = value\n    .replace(/\\\\+/g, '')\n    .replace(/&quot;|%22/gi, '\"')\n    .trim();\n\n  const lastHttps = sanitized.lastIndexOf('https://');\n  const lastHttp = sanitized.lastIndexOf('http://');\n  const lastProtocolIndex = Math.max(lastHttps, lastHttp);\n\n  if (lastProtocolIndex > 0) {\n    sanitized = sanitized.slice(lastProtocolIndex);\n  }\n\n  sanitized = sanitized\n    .replace(/^(?:\"|')+/g, '')\n    .replace(/(?:\\/?(?:\"|'))+$/g, '')\n    .replace(/^\\/+((?:https?:\\/\\/))/i, '$1')\n    .replace(/\\s+/g, '');\n\n  return sanitized;\n}\n\nlet rawContent = parsed.content || '';\n\nif (typeof rawContent === 'string') {\n  rawContent = rawContent\n    .replace(/\\\\r/g, ' ')\n    .replace(/\\\\n/g, ' ')\n    .replace(/\\\\\"/g, '\"')\n    .replace(/\\\\'/g, \"'\")\n    .replace(/&quot;/g, '\"')\n    .replace(/&#34;/g, '\"')\n    .replace(/\\\\\\\\/g, '\\\\');\n\n  rawContent = rawContent.replace(/href\\s*=\\s*([\"'])(.*?)\\1/gi, (match, quote, hrefValue) => {\n    const sanitizedHref = sanitizeHrefValue(hrefValue);\n    return sanitizedHref ? `href=\"${sanitizedHref}\"` : match;\n  });\n\n  const firstTag = rawContent.indexOf('<');\n  const lastTag = rawContent.lastIndexOf('>');\n  if (firstTag !== -1 && lastTag > firstTag) {\n    rawContent = rawContent.substring(firstTag, lastTag + 1);\n  }\n}\n\nfunction clean(value) {\n  if (!value) return '';\n  return value.toString().replace(/[\\u00ab\\u00bb\\\\]/g, '').trim();\n}\n\nconst rawLanguage = ($('Execute Workflow Trigger').first().json.language || '').toString().toLowerCase();\nconst targetLanguage = (rawLanguage.includes('ing') || rawLanguage.includes('english')) ? 'en' : 'es';\n\nconst contentText = rawContent.toString().replace(/<[^>]+>/g, ' ');\nconst textForLang = [\n  clean(parsed.title),\n  clean(parsed.excerpt),\n  clean(parsed.focusKeyphrase || parsed.focus_keyphrase || ''),\n  contentText\n].join(' ').toLowerCase();\n\nconst esStops = ['el','la','los','las','un','una','unos','unas','y','o','pero','porque','que','de','del','al','en','para','por','con','sin','sobre','entre','como','es','son','ser','se','su','sus','lo','ya','no','si','hay','mas','menos','muy','tambien','esta','este','estos','estas'];\nconst enStops = ['the','and','or','but','because','that','of','to','in','for','by','with','without','on','between','as','is','are','be','it','its','this','these','those','not','if','there','more','less','very','also','from','into','than'];\n\nfunction countStops(text, stops) {\n  const tokens = text.match(/[a-z]+/g) || [];\n  const stopSet = new Set(stops);\n  let count = 0;\n  for (const token of tokens) {\n    if (stopSet.has(token)) count += 1;\n  }\n  return count;\n}\n\nconst esCount = countStops(textForLang, esStops);\nconst enCount = countStops(textForLang, enStops);\nconst languageValid = targetLanguage === 'en'\n  ? enCount >= 8 && enCount >= esCount * 1.35\n  : esCount >= 8 && esCount >= enCount * 1.35;\n\nif (!languageValid) {\n  throw new Error(`La corrección de idioma sigue siendo inválida. Scores ES=${esCount} EN=${enCount}`);\n}\n\n// Recuperamos el JSON-LD del trigger para saltarnos el modelo de AI del Editor\nconst originalJsonLd = $('Execute Workflow Trigger').first().json.json_ld || null;\nif (originalJsonLd) {\n  const jsonLdString = typeof originalJsonLd === 'object' ? JSON.stringify(originalJsonLd) : originalJsonLd;\n  if (!rawContent.includes('application/ld+json')) {\n    rawContent += '\\n<script type=\"application/ld+json\">\\n' + jsonLdString + '\\n</script>';\n  }\n}\n\nreturn [{\n  json: {\n    title: clean(parsed.title),\n    content: rawContent,\n    text: rawContent,\n    slug: clean(parsed.slug),\n    excerpt: clean(parsed.excerpt),\n    focusKeyphrase: clean(parsed.focusKeyphrase || parsed.focus_keyphrase || ''),\n    status: 'publish',\n    categoryNames: catsArray,\n    tags: tagsArray,\n    targetLanguage,\n    languageValid,\n    languageSource: 'rewritten',\n    languageScores: { esCount, enCount }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14848,
+        6320
+      ],
+      "id": "c081bda7-8a9a-47bd-a48b-c3fd2c2b0264",
+      "name": "Parser Editor"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Corrección Editorial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Corrección Editorial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Corrección Editorial": {
+      "main": [
+        [
+          {
+            "node": "Parser Editor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dd8c2fb9-00c6-49f2-8b13-5b30e6582919",
+  "meta": {
+    "instanceId": "34cae7488d1577f4b14efa2b1a18a64ba4e4777055cf99a647de27c2ee714f74"
+  },
+  "id": "4krlhynx9lBfoqPk",
+  "tags": []
+}

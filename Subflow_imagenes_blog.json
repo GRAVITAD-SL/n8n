@@ -1,0 +1,471 @@
+{
+  "name": "Subflow - Imagenes Blog",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        13328,
+        2832
+      ],
+      "id": "49cc7564-aa4e-47a3-b581-9b21f75613e0",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actua como un editor grafico experto.\nLee el siguiente fragmento del articulo y extrae el TEMA PRINCIPAL en una sola frase de busqueda en INGLES (2 o 3 palabras maximo).\nEl objetivo es usar esta frase para buscar una foto de stock en Pexels.\n\nEJEMPLOS:\n- Articulo sobre medicina: \"doctor hospital\"\n- Articulo sobre programacion: \"coding laptop\"\n- Articulo sobre negocios: \"business meeting\"\n\nARTICULO:\n\"\"\"\n{{ $json.text || $json.content }}\n\"\"\"\n\nRESPUESTA:\nSolo devuelve las palabras clave en ingles, sin comillas ni explicaciones.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        13552,
+        2832
+      ],
+      "id": "e3a0443b-6a6d-4d29-baf2-d0575d7268ee",
+      "name": "Keyword imagen"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.5",
+          "mode": "list",
+          "cachedResultName": "gpt-5.5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        13632,
+        3056
+      ],
+      "id": "07daed77-9fb6-47f9-ac52-3e2086024eb4",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "nJOMCbNfcV7iSWQZ",
+          "name": "OpenAI Synergiart"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.pexels.com/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "per_page",
+              "value": "40"
+            },
+            {
+              "name": "orientation",
+              "value": "landscape"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "mSnzAATpcfnM6on9fN3KWH8NpM0JokMJJ74ZjdUR9rDzLONNUCHOsIQl"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        13904,
+        2832
+      ],
+      "id": "c3840904-ca2b-4754-b8da-db49f053e421",
+      "name": "Buscar en pexels"
+    },
+    {
+      "parameters": {
+        "jsCode": "const photos = Array.isArray($json.photos) ? $json.photos.filter(Boolean) : [];\nif (photos.length === 0) throw new Error('Pexels no devolvio fotos');\n\nconst shuffled = [...photos].sort(() => Math.random() - 0.5);\nconst featuredPhoto = shuffled[0];\nconst inlinePhoto = shuffled.find((photo) => photo.id !== featuredPhoto.id) || featuredPhoto;\n\nreturn [{ json: { featuredPhoto, inlinePhoto } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14128,
+        2832
+      ],
+      "id": "3117f61d-889f-4399-8dd3-5b656871ae70",
+      "name": "Seleccionar foto aleatoria"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.featuredPhoto.src.large2x }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        14352,
+        2832
+      ],
+      "id": "648f94c9-063d-4519-bd49-5ac04c1fc75f",
+      "name": "Descargar foto principal"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst currentItem = items[0];\n\nconst userRaw = input.wpUser;\nconst passRaw = input.wpPassword;\nconst user = (Array.isArray(userRaw) ? userRaw[0] : userRaw || 'admonwp').toString().trim();\nconst passClean = (Array.isArray(passRaw) ? passRaw[0] : passRaw || '').toString().replace(/\\s+/g, '').trim();\nconst headerAuthRaw = `Basic ${Buffer.from(`${user}:${passClean}`, 'utf8').toString('base64')}`;\n\nconst topic = (input.topic || 'blog').toString().trim();\nconst imageBase = topic\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s]/g, '')\n  .replace(/\\s+/g, '-')\n  .slice(0, 60) || 'blog';\n\nconst photo = $('Seleccionar foto aleatoria').first().json.featuredPhoto;\n\nreturn [{\n  json: {\n    ...(currentItem.json || {}),\n    headerAuthRaw,\n    imageName: `${imageBase}.jpg`,\n    pexelsAlt: topic || ((photo && photo.alt) ? photo.alt : imageBase),\n    imageTitle: input.title || topic || imageBase\n  },\n  binary: currentItem.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        14576,
+        2832
+      ],
+      "id": "e565e4c6-246c-4dcb-9d7d-e4b141ed5b86",
+      "name": "Auth imagen principal"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Disposition",
+              "value": "=attachment; filename=\"{{ $json.imageName }}\""
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headerAuthRaw }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        14800,
+        2832
+      ],
+      "id": "534fc823-26c6-476f-b943-93742fc0ee11",
+      "name": "Subir imagen principal"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/media/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Auth imagen principal').first().json.headerAuthRaw }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ alt_text: $('Auth imagen principal').first().json.pexelsAlt || '', title: $('Auth imagen principal').first().json.imageTitle || '', caption: '' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        15024,
+        2832
+      ],
+      "id": "1af4e4fa-21ff-42ce-b0c6-7c46be8e942a",
+      "name": "Patch imagen SEO"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Seleccionar foto aleatoria').first().json.inlinePhoto.src.large2x }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        15248,
+        2832
+      ],
+      "id": "2434eb58-528c-48d6-aa18-3edaa5152df9",
+      "name": "Descargar foto inline"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst currentItem = items[0];\n\nconst userRaw = input.wpUser;\nconst passRaw = input.wpPassword;\nconst user = (Array.isArray(userRaw) ? userRaw[0] : userRaw || 'admonwp').toString().trim();\nconst passClean = (Array.isArray(passRaw) ? passRaw[0] : passRaw || '').toString().replace(/\\s+/g, '').trim();\nconst headerAuthRaw = `Basic ${Buffer.from(`${user}:${passClean}`, 'utf8').toString('base64')}`;\n\nconst topic = (input.topic || 'blog').toString().trim();\nconst imageBase = topic\n  .toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s]/g, '')\n  .replace(/\\s+/g, '-')\n  .slice(0, 52) || 'blog';\n\nreturn [{\n  json: {\n    ...(currentItem.json || {}),\n    headerAuthRaw,\n    inlineImageName: `${imageBase}-detalle.jpg`,\n    inlineAlt: topic || imageBase,\n    inlineTitle: input.title || topic || imageBase\n  },\n  binary: currentItem.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15472,
+        2832
+      ],
+      "id": "4005028b-2e8e-471f-90ea-12af8954f831",
+      "name": "Auth imagen inline"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Disposition",
+              "value": "=attachment; filename=\"{{ $json.inlineImageName }}\""
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headerAuthRaw }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        15696,
+        2832
+      ],
+      "id": "4cdf9441-926a-426f-b3f2-8d4e444aa672",
+      "name": "Subir imagen inline"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Execute Workflow Trigger').first().json.siteUrl }}/wp-json/wp/v2/media/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Auth imagen inline').first().json.headerAuthRaw }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ alt_text: $('Auth imagen inline').first().json.inlineAlt || '', title: $('Auth imagen inline').first().json.inlineTitle || '', caption: '' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        15920,
+        2832
+      ],
+      "id": "4b680755-cde5-4c16-9e16-5512278c174c",
+      "name": "Patch imagen inline SEO"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Execute Workflow Trigger').first().json;\nconst article = {\n  content: (input.content || input.text || '').toString(),\n  excerpt: (input.excerpt || '').toString()\n};\nconst inlineNode = $('Patch imagen inline SEO').first().json;\nconst inlineUrl = inlineNode.source_url || (inlineNode.guid && inlineNode.guid.rendered) || '';\nconst inlineAlt = ($('Auth imagen inline').first().json.inlineAlt || input.topic || 'Imagen del articulo').toString().replace(/&/g, '&amp;').replace(/\"/g, '&quot;').trim();\nconst inlineId = $('Subir imagen inline').first().json.id;\nconst originalWidth = Number(inlineNode.media_details?.width || 0);\nconst originalHeight = Number(inlineNode.media_details?.height || 0);\nconst inlineWidth = originalWidth > 0 ? Math.max(1, Math.round(originalWidth * 0.3)) : 384;\nconst inlineHeight = originalHeight > 0 ? Math.max(1, Math.round(originalHeight * 0.3)) : 216;\nconst figure = inlineUrl ? `<figure class=\"wp-block-image size-medium\" style=\"text-align:center;margin-left:auto;margin-right:auto;\"><img src=\"${inlineUrl}\" alt=\"${inlineAlt}\" class=\"wp-image-${inlineId}\" width=\"${inlineWidth}\" height=\"${inlineHeight}\" loading=\"lazy\" style=\"width:${inlineWidth}px;height:${inlineHeight}px;max-width:100%;display:block;margin-left:auto;margin-right:auto;\" /></figure>` : '';\n\n// --- SANITIZAR ENLACES MALFORMADOS ---\nfunction sanitizeLinks(html) {\n  return html\n    .replace(/href=\"+(https?:\\/\\/[^\\s\"<>]+?)\"+/gi, 'href=\"$1\"')\n    .replace(/href=\"&quot;(https?:\\/\\/[^\\s\"<>&]+?)&quot;\"/gi, 'href=\"$1\"')\n    .replace(/href=\"%22(https?:\\/\\/[^\\s\"<>]+?)%22\"/gi, 'href=\"$1\"');\n}\n\n// --- INSERTAR IMAGEN EN LÍMITE DE BLOQUE ---\nconst finalContent = (() => {\n  if (!article.content || !figure) return article.content;\n\n  const html = sanitizeLinks(article.content);\n  const totalLen = html.length;\n  const midPoint = Math.floor(totalLen / 2);\n\n  const blockBoundaries = [];\n  const blockEndPattern = /<\\/(?:p|section|ol|ul|table|dl|blockquote|aside|figure)>\\s*/gi;\n  let m;\n  while ((m = blockEndPattern.exec(html)) !== null) {\n    const pos = m.index + m[0].length;\n    blockBoundaries.push(pos);\n  }\n\n  if (blockBoundaries.length > 0) {\n    let bestPos = blockBoundaries[0];\n    let bestDist = Math.abs(bestPos - midPoint);\n    for (const pos of blockBoundaries) {\n      const dist = Math.abs(pos - midPoint);\n      if (dist < bestDist) { bestDist = dist; bestPos = pos; }\n    }\n    const tooEarly = bestPos < totalLen * 0.2;\n    const tooLate  = bestPos > totalLen * 0.8;\n    if (!tooEarly && !tooLate) {\n      return html.slice(0, bestPos) + figure + html.slice(bestPos);\n    }\n  }\n\n  const paragraphs = [...html.matchAll(/<p\\b[^>]*>[\\s\\S]*?<\\/p>/gi)];\n  if (paragraphs.length === 0) return html + figure;\n  const middleIndex = Math.max(0, Math.floor(paragraphs.length / 2) - 1);\n  const target = paragraphs[middleIndex];\n  const insertAt = (target.index ?? 0) + target[0].length;\n  return html.slice(0, insertAt) + figure + html.slice(insertAt);\n})();\n\nconst excerpt = article.excerpt || finalContent.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 155);\n\nreturn [{\n  json: {\n    headerAuthRaw: $('Auth imagen principal').first().json.headerAuthRaw,\n    featuredMediaId: $('Subir imagen principal').first().json.id,\n    featuredAlt: $('Auth imagen principal').first().json.pexelsAlt,\n    content: finalContent,\n    excerpt,\n    inlineImageId: inlineId,\n    inlineUrl,\n    inlineAlt\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16144,
+        2832
+      ],
+      "id": "06972d6a-122c-4122-a028-b575c3f20e71",
+      "name": "Salida imagenes"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Keyword imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keyword imagen": {
+      "main": [
+        [
+          {
+            "node": "Buscar en pexels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Keyword imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en pexels": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar foto aleatoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar foto aleatoria": {
+      "main": [
+        [
+          {
+            "node": "Descargar foto principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar foto principal": {
+      "main": [
+        [
+          {
+            "node": "Auth imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Subir imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Patch imagen SEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patch imagen SEO": {
+      "main": [
+        [
+          {
+            "node": "Descargar foto inline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar foto inline": {
+      "main": [
+        [
+          {
+            "node": "Auth imagen inline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth imagen inline": {
+      "main": [
+        [
+          {
+            "node": "Subir imagen inline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir imagen inline": {
+      "main": [
+        [
+          {
+            "node": "Patch imagen inline SEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patch imagen inline SEO": {
+      "main": [
+        [
+          {
+            "node": "Salida imagenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "56633795-59ed-4ad5-84d3-dd7534af045b",
+  "meta": {
+    "instanceId": "34cae7488d1577f4b14efa2b1a18a64ba4e4777055cf99a647de27c2ee714f74"
+  },
+  "id": "jzLEtANNt72m11Wt",
+  "tags": []
+}
